@@ -1,201 +1,170 @@
 # Kindle Highlights → Obsidian LLM Wiki
 
 **Date:** 2026-07-09
-**Status:** Draft — pending review (rev 2: local-first, My Clippings.txt source)
+**Status:** Draft — pending review (rev 3: single script, LLM-wiki pattern per
+Karpathy's gist, immutable book files)
 
 ## Goal
 
-Turn Kindle highlights into an Obsidian knowledge base that maintains itself:
-per-book markdown files, an LLM-generated concept wiki linked via the Obsidian
-graph, and an automated pipeline that keeps both current without manual work.
+Turn Kindle highlights into an Obsidian knowledge base that maintains itself,
+following the LLM-wiki pattern (karpathy/442a6bf5...): immutable raw sources,
+an LLM-maintained wiki of interlinked markdown, and a schema file defining the
+operations. Plugging in the Kindle is the sync.
 
 ## Constraints discovered (2026-07-09 investigation)
 
-- The Kindle Mac app (`com.amazon.Lassen`) stores only highlight **positions
-  and colors** locally — not the text.
-- The user highlights **mostly on a physical Kindle device**. The device's
-  `My Clippings.txt` (at `/Volumes/Kindle/documents/My Clippings.txt` when
-  mounted) records every clip made on the device, with text, page, location,
-  and timestamp. This is the chosen source: fully local, no auth, no browser.
-- Known gap, accepted for v1: `My Clippings.txt` only contains clips made on
-  the device. Highlights made in the phone/Mac app live only in Amazon's
-  cloud. A Playwright-based cloud fetcher was designed (see git history of
-  this spec) and can be revived later as a second source.
-- `My Clippings.txt` is append-only: it accumulates duplicates and keeps
-  clips that were later deleted or edited on the device. The importer must
-  dedupe exact duplicates; smarter overlap cleanup is deferred (see Out of
-  scope).
+- The Kindle Mac app stores only highlight positions locally — never text.
+  The user highlights on a physical Kindle; the device's `My Clippings.txt`
+  has text, page, location, and timestamps. Chosen source: fully local, no
+  auth, no network.
+- Known gaps, accepted: phone/Mac-app highlights live only in Amazon's cloud
+  (rev 1 in git history designed a fetcher if ever needed); the clippings
+  file is append-only, so deleted/edited highlights linger (exact-duplicate
+  dedupe only in v1).
 
 ## Architecture
 
-Four components, each independently testable. Data flows one direction.
+Three artifacts. The vault's book files are the "raw sources" layer of the
+LLM-wiki pattern; the concept pages are the wiki; `CLAUDE.md` is the schema.
 
 ```
-/Volumes/Kindle/documents/My Clippings.txt   (device plugged in via USB)
-        │  1. importer (pure parser + dedupe)
+/Volumes/Kindle/documents/My Clippings.txt
+        │  sync.py  (parse → dedupe → write, all in memory, no intermediates)
         ▼
-data/raw/<book-slug>.json      ← raw source of truth, regenerated per import
-        │  2. renderer (pure function)
+vault/books/*.md            ← GENERATED, overwritten wholesale each sync
+        │  LLM agent (Claude Code / claude -p) following CLAUDE.md schema
         ▼
-vault/books/<book-slug>.md     ← machine-owned inside <highlights> block
-        │  3. wiki builder (LLM via `claude -p`, merge-not-regenerate)
-        ▼
-vault/concepts/<concept>.md    ← concept pages linking [[books]] and quotes
+vault/concepts/*.md         ← LLM-maintained wiki; Obsidian graph = wikilinks
         ▲
-        └─ 4. trigger (launchd, fires on Kindle volume mount):
-             import → render → wiki, loud failure
+        └─ launchd (on Kindle mount): copy clippings → sync.py → notify
 ```
 
-**Language:** Python for all scripts. Rationale: single-file scripts, no
-build step, no dependencies beyond the standard library for import/render.
-
-**Vault:** the project creates its own vault at `vault/` (open it in
-Obsidian). Rationale: generated content stays isolated from the personal
-"how to write" vault; merging later is a folder move.
-
-### 1. Importer (`import_clippings.py`)
-
-- Input: a copy of `My Clippings.txt` (the trigger copies it into
-  `data/clippings/` with a timestamped name before parsing, so history is
-  kept and parsing never touches the device).
-- Parses the standard entry format:
-
-  ```
-  Title (Author)
-  - Your Highlight on page 45 | location 680-682 | Added on Monday, January 1, 2024 11:11:11 PM
-
-  The clipped text
-  ==========
-  ```
-
-  Entry types: `Highlight`, `Note` (kept), `Bookmark` (skipped — no
-  content). English-language device format assumed.
-- Whole-file re-parse on every run (mirrors the "re-fetch the whole book"
-  simplification): output JSON is regenerated from scratch, grouped by book.
-- Dedupe: exact-duplicate clips (same book, type, location, text) collapse
-  to one, keeping the latest timestamp.
-- Stable clip IDs: `My Clippings.txt` has no native IDs, so the importer
-  derives one — first 12 hex chars of SHA-1 over
-  `title|type|location|text`. Deterministic across runs, survives
-  re-imports, and gives the wiki stable anchors.
-- Never partially write: render JSON to temp, rename on success.
-
-Raw JSON schema per book (`data/raw/<book-slug>.json`):
-
-```json
-{
-  "title": "Book Title",
-  "author": "Author Name",
-  "imported_at": "2026-07-09T12:00:00Z",
-  "clips": [
-    {
-      "id": "a1b2c3d4e5f6",
-      "type": "highlight",
-      "text": "The highlighted passage.",
-      "note": null,
-      "page": 45,
-      "location": "680-682",
-      "date": "2024-01-01T23:11:11"
-    }
-  ]
-}
+```
+~/kindle-wiki/
+├── sync.py                 the only Python script
+├── CLAUDE.md               wiki schema: ingest / lint operations
+├── data/clippings/         timestamped copies of My Clippings.txt
+└── vault/                  open this in Obsidian
+    ├── books/              generated sources (do not edit)
+    └── concepts/           the wiki (LLM + human)
 ```
 
-Clip shape rules: for `type: "highlight"`, `text` is the highlighted passage
-and `note` is an attached note when one immediately follows at the same
-location, else null. For `type: "note"` (standalone note), `text` holds the
-note content and `note` is null. `page` is null for books without real page
-numbers.
+Decisions locked in this revision:
 
-### 2. Renderer (`render.py`)
+- **No JSON intermediate, one script.** Rev 1's fetch/render split checkpointed
+  an expensive network fetch; with a local file the intermediate is a
+  regenerable artifact — deleted per YAGNI. Parse and render remain separate
+  *functions* inside `sync.py` for testability.
+- **Book files are immutable sources.** `sync.py` overwrites them wholesale;
+  no merge logic, no ownership rule. The user's own thinking lives in concept
+  pages (or any other note) that link to books/quotes. Each generated file
+  carries a header comment warning that edits are overwritten.
+- **The wiki maintainer is the LLM agent, not a program.** No `wiki.py`, no
+  structured-output pipeline, no ledger. `CLAUDE.md` defines the operations;
+  concept-name stability comes from the schema (read the index before naming)
+  plus a periodic lint. If churn shows up in practice, constraints get added
+  then — not before. (Rev 2's deterministic wiki builder is in git history.)
 
-Pure transform: `data/raw/*.json` → `vault/books/<book-slug>.md`.
+### sync.py
 
-File format:
+- Input: newest copy in `data/clippings/` (the trigger copies the device file
+  with a timestamped name first; never parses off the volume directly).
+- Parses the standard English entry format; keeps `Highlight` and `Note`
+  entries, skips bookmarks. Whole-file re-parse every run; output is fully
+  regenerated, so the script is idempotent.
+- Dedupe: exact-duplicate clips (book, type, location, text) collapse to one,
+  keeping the latest timestamp.
+- Stable clip IDs: first 12 hex chars of SHA-1 over `title|type|location|text`
+  — deterministic across runs; the anchors concept pages cite.
+- Writes a book file only when its rendered content actually changed
+  (compare ignoring `last_synced`). Unchanged books keep their old file and
+  date, so "which books have new highlights" stays answerable — that's what
+  ingest targets and what the notification counts.
+- Attached notes: a `Note` at a location inside a highlight's range on the
+  same book attaches to that highlight; otherwise it renders standalone.
+
+Generated book file:
 
 ```markdown
 ---
-title: Book Title
-author: Author Name
-last_imported: 2026-07-09
+title: Peak
+author: Anders Ericsson
+last_synced: 2026-07-09
 ---
+<!-- GENERATED by sync.py — edits are overwritten on every Kindle sync -->
 
-# Book Title
-*Author Name*
+# Peak
+*Anders Ericsson*
 
 <highlights>
 
-<!-- clip:start id=a1b2c3d4e5f6 type=highlight page=45 location=680-682 date=2024-01-01T23:11:11 -->
-> The highlighted passage.
+<!-- clip:start id=3f9c2a1b7d04 type=highlight page=45 location=680-682 date=2026-06-01T21:12:44 -->
+> The right sort of practice carried out over a sufficient period of time
+> leads to improvement.
 
-Note: My attached note (omitted when absent)
+Note: attached note, when present
 <!-- clip:end -->
 
 </highlights>
 ```
 
-- HTML comments mark clip boundaries and carry metadata: machine-parseable,
-  invisible in Obsidian preview.
-- Clips are ordered by location within the book.
-- **Ownership rule:** the renderer replaces only the content between
-  `<highlights>` and `</highlights>`. Everything outside the block (user
-  prose above or below) is preserved verbatim. New files get the full
-  skeleton.
-- Never partially write: render to temp, rename.
+Clips ordered by location. `page`/`date` omitted from the marker when absent.
 
-### 3. Wiki builder (`wiki.py`)
+### CLAUDE.md (the wiki schema)
 
-- v1 ontology is deliberately minimal: **Books** and **Concepts** only.
-  One page per concept in `vault/concepts/`, listing quotes (with `[[book]]`
-  links) that support it. The Obsidian graph emerges from the wikilinks —
-  no plugin required.
-- LLM invoked headlessly via `claude -p` (reuses existing Claude Code auth;
-  no API key management).
-- **Merge, don't regenerate:** every run passes the LLM the existing concept
-  index (filenames + one-line summaries) and instructs it to reuse existing
-  concept names, creating new pages only for genuinely new concepts. This
-  keeps the graph stable across runs and protects manual links.
-- Concept pages are machine-owned inside a `<wiki>` block, same ownership
-  rule as book files.
-- Richer ontology (Entities, Themes, Quotes-as-nodes) is a later milestone,
-  iterated only after v1 proves stable.
+Defines, in prose the agent follows:
 
-### 4. Trigger (`pipeline.py` + launchd)
+- **Page shapes.** Concept pages in `vault/concepts/`: frontmatter with a
+  one-line summary, quotes cited with `[[book]]` links and clip IDs.
+  `vault/concepts/_index.md`: the concept list with one-liners, plus a
+  per-book record of the last-ingested sync date.
+- **Ingest.** Read book files newer than their `_index.md` record; assign new
+  highlights to concepts. Reuse existing concept names whenever one fits
+  (read `_index.md` first); create new pages only for genuinely new ideas.
+  Update `_index.md` last.
+- **Lint.** Find near-duplicate concepts, orphan pages, quotes citing missing
+  clip IDs, and index drift; propose fixes (merges are suggested to the user,
+  not auto-applied).
 
-- A launchd job watches for the Kindle volume mount (`StartOnMount` with a
-  guard that checks `/Volumes/Kindle` exists). Plugging in the Kindle *is*
-  the schedule: copy `My Clippings.txt` → import → render → wiki.
-- Any step failing aborts the pipeline, logs to `data/logs/`, and fires a
-  macOS notification (`osascript`). A success notification confirms the sync
-  ran ("N new clips imported"), so silent staleness can't happen.
+### Trigger (launchd)
+
+- `StartOnMount` job guarded on `/Volumes/Kindle`: copy `My Clippings.txt`
+  into `data/clippings/` (timestamped), run `sync.py`, notify via `osascript`
+  — "N new clips across M books" on success, the failing step on error.
+  Silent staleness is the failure mode to avoid.
+- Wiki ingest stays **manual at first**: the user opens Claude Code in
+  `~/kindle-wiki` and says "ingest". Chaining `claude -p` ingest into the
+  trigger is the last milestone, adopted only after manual ingests are
+  trusted.
 
 ## Milestones (each ends in a demonstrable test)
 
-1. **Import smoke test:** parse one clip from the real `My Clippings.txt`
-   (device plugged in), verify text/page/location/date/id in JSON.
-2. **Full import:** whole file → `data/raw/`, spot-check book and clip
-   counts, verify dedupe.
-3. **Renderer:** fixture JSON → golden-file markdown test; ownership rule
-   verified (edits outside the block survive re-render).
-4. **Wiki v1:** concepts generated for 2–3 books; second run with one new
-   highlight reuses existing concept names (stability test).
-5. **Automation:** launchd mount trigger runs end-to-end on plug-in;
-   failure path verified (e.g., missing clippings file → notification).
-6. **(Later) Wiki ontology iteration** — separate design pass once v1 is in
-   daily use.
+1. **Parse smoke test:** one clip from the real clippings file prints with
+   correct text/page/location/date/ID. Needs the Kindle plugged in.
+2. **Full sync:** whole file → `vault/books/`, counts spot-checked, dedupe
+   verified, second run produces byte-identical output (idempotence).
+3. **Wiki schema + first manual ingest:** write `CLAUDE.md`; ingest 2–3 books
+   in a Claude Code session; concept pages and graph visible in Obsidian.
+4. **Stability + lint:** a second ingest with one new highlight reuses
+   existing concept names; lint pass runs and reports sensibly.
+5. **Automation:** plugging in the Kindle runs copy → sync → notify
+   end-to-end; missing clippings file fires the failure notification.
+   Optionally chain `claude -p` ingest once trusted.
+6. **(Later) Richer ontology:** entities, themes, merge/split curation — a
+   separate design pass after living with v1.
 
 ## Out of scope (for now)
 
-- Cloud fetcher for phone/Mac-app highlights (revive from rev 1 of this
-  spec if the gap starts to matter).
-- Overlap cleanup: adjusting a highlight's edges on-device leaves both
-  versions in the file as near-duplicates. v1 dedupes exact matches only;
-  a containment heuristic is a later improvement.
-- Obsidian plugin — filesystem writes are sufficient; Obsidian picks them up.
-- Non-English device languages (clip headers are localized).
-- Multi-vault or merging into the personal vault.
+- Cloud fetcher for app-made highlights (rev 1 in git history).
+- Overlap cleanup for edge-adjusted highlights (exact-match dedupe only).
+- Deterministic wiki builder with structured output (rev 2 in git history;
+  revive only if agentic ingest churns concepts in practice).
+- Obsidian plugin, non-English clip headers, merging into the personal vault.
 
-## Open questions
+## Decisions previously open, now resolved
 
-1. Confirm separate vault at `~/kindle-wiki/vault/` vs. a subfolder of the
-   existing "how to write" vault.
+- Vault: separate at `~/kindle-wiki/vault/` (merging into the personal vault
+  later is a folder move).
+- Book files: immutable generated sources — user chose simplicity over
+  in-file annotation (migration path exists: add an ownership-rule merge
+  later if the urge to annotate book pages appears).

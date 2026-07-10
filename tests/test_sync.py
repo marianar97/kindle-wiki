@@ -167,3 +167,46 @@ def test_location_start_handles_missing_location():
     from sync import location_start
     assert location_start(make_clip(location=None)) == 0
     assert location_start(make_clip(location="680-682")) == 680
+
+
+def test_render_highlight_block():
+    from sync import render_clip
+    clip = make_clip(text="Line one.")
+    assert render_clip(clip) == (
+        "> Line one.\n"
+        ">\n"
+        f"> — highlight · p. 45 · loc. 680-682 · 2026-06-01 ^{clip.id}"
+    )
+
+
+def test_render_note_block():
+    from sync import render_clip
+    clip = make_clip(type="note", location="681", text="My thought.")
+    assert render_clip(clip) == (
+        "Note: My thought.\n"
+        f"— note · p. 45 · loc. 681 · 2026-06-01 ^{clip.id}"
+    )
+
+
+def test_render_bookmark_block():
+    from sync import render_clip
+    clip = make_clip(type="bookmark", page="51", location="760", text="")
+    assert render_clip(clip) == (
+        f"Bookmark · p. 51 · loc. 760 · 2026-06-01 ^{clip.id}"
+    )
+
+
+def test_render_omits_missing_page_and_date():
+    from sync import render_clip
+    clip = make_clip(page=None, date=None, text="Quote.")
+    assert render_clip(clip) == (
+        "> Quote.\n"
+        ">\n"
+        f"> — highlight · loc. 680-682 ^{clip.id}"
+    )
+
+
+def test_render_multiline_highlight_quotes_every_line():
+    from sync import render_clip
+    clip = make_clip(text="First line.\nSecond line.")
+    assert render_clip(clip).startswith("> First line.\n> Second line.\n>\n> — ")

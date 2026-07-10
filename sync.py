@@ -103,3 +103,27 @@ def group_books(clips: list[Clip]) -> dict[tuple[str, str | None], list[Clip]]:
     for key in books:
         books[key].sort(key=lambda c: (location_start(c), TYPE_RANK[c.type]))
     return books
+
+
+def meta_parts(clip: Clip) -> list[str]:
+    parts = []
+    if clip.page:
+        parts.append(f"p. {clip.page}")
+    if clip.location:
+        parts.append(f"loc. {clip.location}")
+    if clip.date:
+        parts.append(clip.date.strftime("%Y-%m-%d"))
+    return parts
+
+
+def meta_line(clip: Clip) -> str:
+    return " · ".join([clip.type] + meta_parts(clip))
+
+
+def render_clip(clip: Clip) -> str:
+    if clip.type == "highlight":
+        quoted = "\n".join(f"> {line}" for line in clip.text.split("\n"))
+        return f"{quoted}\n>\n> — {meta_line(clip)} ^{clip.id}"
+    if clip.type == "note":
+        return f"Note: {clip.text}\n— {meta_line(clip)} ^{clip.id}"
+    return f"{' · '.join(['Bookmark'] + meta_parts(clip))} ^{clip.id}"

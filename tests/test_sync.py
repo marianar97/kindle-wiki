@@ -85,3 +85,55 @@ def test_parse_roman_page_and_bad_date():
 
 def test_parse_all_four_variant_entries():
     assert len(parse_clippings(VARIANT_ENTRIES)) == 4
+
+
+import hashlib
+
+
+def expected_id(title, type_, location, text):
+    key = f"{title}|{type_}|{location}|{text}"
+    return hashlib.sha1(key.encode("utf-8")).hexdigest()[:12]
+
+
+def make_clip(**kwargs):
+    from datetime import datetime as dt
+    defaults = dict(
+        title="Peak", author="Anders Ericsson", type="highlight",
+        page="45", location="680-682",
+        date=dt(2026, 6, 1, 21, 12, 44),
+        text="Some text.",
+    )
+    defaults.update(kwargs)
+    return Clip(**defaults)
+
+
+def test_clip_id_is_stable_hash():
+    clip = make_clip()
+    assert clip.id == expected_id("Peak", "highlight", "680-682", "Some text.")
+    assert len(clip.id) == 12
+
+
+def test_clip_id_ignores_date():
+    from datetime import datetime as dt
+    a = make_clip(date=dt(2026, 6, 1))
+    b = make_clip(date=dt(2026, 6, 9))
+    assert a.id == b.id
+
+
+def test_dedupe_keeps_latest_date():
+    from datetime import datetime as dt
+    from sync import dedupe
+    old = make_clip(date=dt(2026, 6, 1))
+    new = make_clip(date=dt(2026, 6, 9))
+    other = make_clip(text="Different text.")
+    result = dedupe([old, other, new])
+    assert len(result) == 2
+    assert result[0].date == dt(2026, 6, 9)  # kept the later duplicate
+    assert result[1].text == "Different text."
+
+
+def test_dedupe_handles_missing_dates():
+    from sync import dedupe
+    a = make_clip(date=None)
+    b = make_clip(date=None)
+    assert len(dedupe([a, b])) == 1

@@ -28,6 +28,11 @@ class Clip:
     date: datetime | None
     text: str
 
+    @property
+    def id(self) -> str:
+        key = f"{self.title}|{self.type}|{self.location}|{self.text}"
+        return hashlib.sha1(key.encode("utf-8")).hexdigest()[:12]
+
 
 def parse_entry(block: str) -> Clip | None:
     lines = [line.rstrip("\r") for line in block.split("\n")]
@@ -67,3 +72,16 @@ def parse_clippings(text: str) -> list[Clip]:
         if clip is not None:
             clips.append(clip)
     return clips
+
+
+def dedupe(clips: list[Clip]) -> list[Clip]:
+    best: dict[str, Clip] = {}
+    order: list[str] = []
+    for clip in clips:
+        cid = clip.id
+        if cid not in best:
+            best[cid] = clip
+            order.append(cid)
+        elif (clip.date or datetime.min) > (best[cid].date or datetime.min):
+            best[cid] = clip
+    return [best[cid] for cid in order]

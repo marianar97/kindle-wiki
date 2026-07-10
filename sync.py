@@ -2,9 +2,12 @@
 """Sync Kindle highlights from My Clippings.txt into vault/books/*.md."""
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 import re
+import shutil
+import sys
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -192,3 +195,43 @@ def write_vault(
         tmp.replace(path)
         changed_books += 1
     return new_clips, changed_books
+
+
+DEFAULT_SOURCE = Path("/Volumes/Kindle/documents/My Clippings.txt")
+
+
+def run(source: Path, root: Path) -> int:
+    if not source.exists():
+        print(f"Clippings file not found: {source}", file=sys.stderr)
+        print("Is the Kindle plugged in?", file=sys.stderr)
+        return 1
+    copies = root / "data" / "clippings"
+    copies.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.now().strftime("%Y-%m-%d-%H%M%S")
+    copy_path = copies / f"{stamp}-My Clippings.txt"
+    shutil.copy2(source, copy_path)
+    clips = dedupe(parse_clippings(copy_path.read_text(encoding="utf-8")))
+    books = group_books(clips)
+    synced_on = datetime.now().strftime("%Y-%m-%d")
+    new_clips, changed = write_vault(books, root / "vault" / "books", synced_on)
+    print(
+        f"{new_clips} new clips across {changed} books "
+        f"({len(clips)} clips in {len(books)} books total)"
+    )
+    return 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Sync Kindle clippings into the Obsidian vault."
+    )
+    parser.add_argument(
+        "source", nargs="?", type=Path, default=DEFAULT_SOURCE,
+        help="path to My Clippings.txt (default: mounted Kindle)",
+    )
+    args = parser.parse_args(argv)
+    return run(args.source, Path(__file__).resolve().parent)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

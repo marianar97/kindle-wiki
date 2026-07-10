@@ -298,3 +298,35 @@ def test_write_vault_leaves_no_tmp_files(tmp_path):
     from sync import group_books, write_vault
     write_vault(group_books([make_clip(text="One.")]), tmp_path, "2026-07-09")
     assert list(tmp_path.glob("*.tmp")) == []
+
+
+def test_run_end_to_end(tmp_path, capsys):
+    from sync import run
+    source = tmp_path / "My Clippings.txt"
+    source.write_text(HIGHLIGHT_ENTRY, encoding="utf-8")
+    root = tmp_path / "project"
+    assert run(source, root) == 0
+    out = capsys.readouterr().out
+    assert "1 new clips across 1 books" in out
+    assert (root / "vault" / "books" / "peak.md").exists()
+    copies = list((root / "data" / "clippings").glob("*My Clippings.txt"))
+    assert len(copies) == 1
+
+
+def test_run_missing_source_fails_loudly(tmp_path, capsys):
+    from sync import run
+    assert run(tmp_path / "nope.txt", tmp_path / "project") == 1
+    err = capsys.readouterr().err
+    assert "not found" in err
+    assert "plugged in" in err
+
+
+def test_run_is_idempotent(tmp_path, capsys):
+    from sync import run
+    source = tmp_path / "My Clippings.txt"
+    source.write_text(HIGHLIGHT_ENTRY, encoding="utf-8")
+    root = tmp_path / "project"
+    run(source, root)
+    run(source, root)
+    out = capsys.readouterr().out
+    assert "0 new clips across 0 books" in out.splitlines()[-1]

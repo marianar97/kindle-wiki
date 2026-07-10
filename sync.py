@@ -85,3 +85,21 @@ def dedupe(clips: list[Clip]) -> list[Clip]:
         elif (clip.date or datetime.min) > (best[cid].date or datetime.min):
             best[cid] = clip
     return [best[cid] for cid in order]
+
+
+TYPE_RANK = {"highlight": 0, "note": 1, "bookmark": 2}
+
+
+def location_start(clip: Clip) -> int:
+    if not clip.location:
+        return 0
+    return int(clip.location.split("-")[0])
+
+
+def group_books(clips: list[Clip]) -> dict[tuple[str, str | None], list[Clip]]:
+    books: dict[tuple[str, str | None], list[Clip]] = {}
+    for clip in clips:
+        books.setdefault((clip.title, clip.author), []).append(clip)
+    for key in books:
+        books[key].sort(key=lambda c: (location_start(c), TYPE_RANK[c.type]))
+    return books

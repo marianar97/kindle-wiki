@@ -137,3 +137,33 @@ def test_dedupe_handles_missing_dates():
     a = make_clip(date=None)
     b = make_clip(date=None)
     assert len(dedupe([a, b])) == 1
+
+
+def test_group_books_splits_by_title_and_author():
+    from sync import group_books
+    a = make_clip(title="Peak")
+    b = make_clip(title="Meditations", author=None, text="Other.")
+    books = group_books([a, b])
+    assert set(books) == {("Peak", "Anders Ericsson"), ("Meditations", None)}
+
+
+def test_clips_sorted_by_location_start_then_type():
+    from sync import group_books
+    note = make_clip(type="note", location="681", text="A note.")
+    hl = make_clip(type="highlight", location="680-682")
+    late = make_clip(type="highlight", location="900-901", text="Later.")
+    same_loc_note = make_clip(type="note", location="680", text="Tie note.")
+    books = group_books([late, note, same_loc_note, hl])
+    ordered = books[("Peak", "Anders Ericsson")]
+    assert [(c.type, c.location) for c in ordered] == [
+        ("highlight", "680-682"),  # ties at 680: highlight ranks before note
+        ("note", "680"),
+        ("note", "681"),
+        ("highlight", "900-901"),
+    ]
+
+
+def test_location_start_handles_missing_location():
+    from sync import location_start
+    assert location_start(make_clip(location=None)) == 0
+    assert location_start(make_clip(location="680-682")) == 680

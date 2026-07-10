@@ -24,19 +24,19 @@ operations. Plugging in the Kindle is the sync.
 
 ## Architecture
 
-Three artifacts. The vault's book files are the "raw sources" layer of the
+Two artifacts. The vault's book files are the "raw sources" layer of the
 LLM-wiki pattern; the concept pages are the wiki; `CLAUDE.md` is the schema.
+Both steps are run manually: plug in the Kindle and run `sync.py`; open
+Claude Code and say "ingest".
 
 ```
 /Volumes/Kindle/documents/My Clippings.txt
         │  sync.py  (parse → dedupe → write, all in memory, no intermediates)
         ▼
 vault/books/*.md            ← GENERATED, overwritten wholesale each sync
-        │  LLM agent (Claude Code / claude -p) following CLAUDE.md schema
+        │  LLM agent (Claude Code) following CLAUDE.md schema
         ▼
 vault/concepts/*.md         ← LLM-maintained wiki; Obsidian graph = wikilinks
-        ▲
-        └─ launchd (on Kindle mount): copy clippings → sync.py → notify
 ```
 
 ```
@@ -67,8 +67,11 @@ Decisions locked in this revision:
 
 ### sync.py
 
-- Input: newest copy in `data/clippings/` (the trigger copies the device file
-  with a timestamped name first; never parses off the volume directly).
+- Input: `My Clippings.txt`, defaulting to
+  `/Volumes/Kindle/documents/My Clippings.txt` (or a path argument). The
+  script first copies it into `data/clippings/` with a timestamped name and
+  parses the copy — never the device file directly. On completion it prints
+  a summary: "N new clips across M books", or the failing step.
 - Parses the standard English entry format; keeps all three entry types:
   `Highlight`, `Note`, and `Bookmark`. Bookmarks carry no text — they render
   as a metadata-only clip (type, page/location, date). Whole-file re-parse
@@ -136,17 +139,6 @@ Defines, in prose the agent follows:
   clip IDs, and index drift; propose fixes (merges are suggested to the user,
   not auto-applied).
 
-### Trigger (launchd)
-
-- `StartOnMount` job guarded on `/Volumes/Kindle`: copy `My Clippings.txt`
-  into `data/clippings/` (timestamped), run `sync.py`, notify via `osascript`
-  — "N new clips across M books" on success, the failing step on error.
-  Silent staleness is the failure mode to avoid.
-- Wiki ingest stays **manual at first**: the user opens Claude Code in
-  `~/kindle-wiki` and says "ingest". Chaining `claude -p` ingest into the
-  trigger is the last milestone, adopted only after manual ingests are
-  trusted.
-
 ## Milestones (each ends in a demonstrable test)
 
 1. **Parse smoke test:** one clip from the real clippings file prints with
@@ -157,14 +149,14 @@ Defines, in prose the agent follows:
    in a Claude Code session; concept pages and graph visible in Obsidian.
 4. **Stability + lint:** a second ingest with one new highlight reuses
    existing concept names; lint pass runs and reports sensibly.
-5. **Automation:** plugging in the Kindle runs copy → sync → notify
-   end-to-end; missing clippings file fires the failure notification.
-   Optionally chain `claude -p` ingest once trusted.
-6. **(Later) Richer ontology:** entities, themes, merge/split curation — a
+5. **(Later) Richer ontology:** entities, themes, merge/split curation — a
    separate design pass after living with v1.
 
 ## Out of scope (for now)
 
+- **Automation** — the launchd mount trigger and chaining `claude -p` ingest
+  (design in git history). Both runs stay manual until the pipeline is
+  trusted.
 - Cloud fetcher for app-made highlights (rev 1 in git history).
 - Overlap cleanup for edge-adjusted highlights (exact-match dedupe only).
 - Deterministic wiki builder with structured output (rev 2 in git history;

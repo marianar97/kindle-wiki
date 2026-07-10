@@ -79,7 +79,9 @@ Decisions locked in this revision:
 - Dedupe: exact-duplicate clips (book, type, location, text) collapse to one,
   keeping the latest timestamp.
 - Stable clip IDs: first 12 hex chars of SHA-1 over `title|type|location|text`
-  — deterministic across runs; the anchors concept pages cite.
+  — deterministic across runs, and rendered as native Obsidian block IDs
+  (`^3f9c2a1b7d04`), so concept pages can link (`[[peak#^id]]`) or embed
+  (`![[peak#^id]]`) the exact quote.
 - Writes a book file only when its rendered content actually changed
   (compare ignoring `last_synced`). Unchanged books keep their old file and
   date, so "which books have new highlights" stays answerable — that's what
@@ -87,7 +89,7 @@ Decisions locked in this revision:
 - Attached notes: a `Note` at a location inside a highlight's range on the
   same book attaches to that highlight; otherwise it renders standalone.
 
-Generated book file:
+Generated book file (Obsidian-native format: visible metadata, block IDs):
 
 ```markdown
 ---
@@ -100,33 +102,37 @@ last_synced: 2026-07-09
 # Peak
 *Anders Ericsson*
 
-<highlights>
+## Highlights
 
-<!-- clip:start id=3f9c2a1b7d04 type=highlight page=45 location=680-682 date=2026-06-01T21:12:44 -->
 > The right sort of practice carried out over a sufficient period of time
 > leads to improvement.
+>
+> — highlight · p. 45 · loc. 680-682 · 2026-06-01 ^3f9c2a1b7d04
 
-Note: attached note, when present
-<!-- clip:end -->
+Note: my thought I typed on the device, attached because its location falls
+inside the highlight above.
+— note · p. 45 · loc. 681 · 2026-06-01 ^a1b2c3d4e5f6
 
-<!-- clip:start id=8c1d44e0a9b2 type=bookmark page=51 location=760 date=2026-06-02T08:03:10 -->
-Bookmark
-<!-- clip:end -->
-
-</highlights>
+Bookmark · p. 51 · loc. 760 · 2026-06-02 ^8c1d44e0a9b2
 ```
 
-Clips ordered by location. `page`/`date` omitted from the marker when absent.
-Clip shape rules: highlights have text plus an optional attached note; notes
-have text; bookmarks have no text (the body is just the word `Bookmark`).
-The stable-ID hash handles this naturally (`text` is empty for bookmarks).
+Clips ordered by location under a `## Highlights` heading. Shape by type:
+highlights are blockquotes with a metadata attribution line; notes are plain
+paragraphs prefixed `Note:` (attached notes render directly under their
+highlight); bookmarks are a single metadata line. Every clip's block ends
+with its `^id`, making it a native Obsidian anchor. `p.`/date segments are
+omitted when absent. No HTML markers: metadata is visible to the reader and
+equally parseable by the agent, and the rev 2 `<highlights>` tag is dropped —
+its job (delimiting a machine-owned region for merge logic) died with the
+immutable-files decision.
 
 ### CLAUDE.md (the wiki schema)
 
 Defines, in prose the agent follows:
 
 - **Page shapes.** Concept pages in `vault/concepts/`: frontmatter with a
-  one-line summary, quotes cited with `[[book]]` links and clip IDs.
+  one-line summary, quotes **embedded** via `![[book#^id]]` (single source of
+  truth — never copy quote text) with a `[[book]]` link for the graph edge.
   `vault/concepts/_index.md`: the concept list with one-liners, plus a
   per-book record of the last-ingested sync date.
 - **Ingest.** Read book files newer than their `_index.md` record; assign new
@@ -135,9 +141,9 @@ Defines, in prose the agent follows:
   for them emerges). Reuse existing concept names whenever one fits (read
   `_index.md` first); create new pages only for genuinely new ideas. Update
   `_index.md` last.
-- **Lint.** Find near-duplicate concepts, orphan pages, quotes citing missing
-  clip IDs, and index drift; propose fixes (merges are suggested to the user,
-  not auto-applied).
+- **Lint.** Find near-duplicate concepts, orphan pages, broken block
+  references (embeds pointing at `^id`s that no longer exist), and index
+  drift; propose fixes (merges are suggested to the user, not auto-applied).
 
 ## Milestones (each ends in a demonstrable test)
 
@@ -170,3 +176,6 @@ Defines, in prose the agent follows:
 - Book files: immutable generated sources — user chose simplicity over
   in-file annotation (migration path exists: add an ownership-rule merge
   later if the urge to annotate book pages appears).
+- Clip format: Obsidian-native (option B) — visible metadata lines and native
+  block-ID anchors, replacing rev 3's invisible HTML comment markers; the
+  wiki embeds quotes instead of copying them.

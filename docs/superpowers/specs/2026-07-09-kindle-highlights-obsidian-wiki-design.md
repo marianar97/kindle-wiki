@@ -69,9 +69,10 @@ Decisions locked in this revision:
 
 - Input: newest copy in `data/clippings/` (the trigger copies the device file
   with a timestamped name first; never parses off the volume directly).
-- Parses the standard English entry format; keeps `Highlight` and `Note`
-  entries, skips bookmarks. Whole-file re-parse every run; output is fully
-  regenerated, so the script is idempotent.
+- Parses the standard English entry format; keeps all three entry types:
+  `Highlight`, `Note`, and `Bookmark`. Bookmarks carry no text — they render
+  as a metadata-only clip (type, page/location, date). Whole-file re-parse
+  every run; output is fully regenerated, so the script is idempotent.
 - Dedupe: exact-duplicate clips (book, type, location, text) collapse to one,
   keeping the latest timestamp.
 - Stable clip IDs: first 12 hex chars of SHA-1 over `title|type|location|text`
@@ -105,10 +106,17 @@ last_synced: 2026-07-09
 Note: attached note, when present
 <!-- clip:end -->
 
+<!-- clip:start id=8c1d44e0a9b2 type=bookmark page=51 location=760 date=2026-06-02T08:03:10 -->
+Bookmark
+<!-- clip:end -->
+
 </highlights>
 ```
 
 Clips ordered by location. `page`/`date` omitted from the marker when absent.
+Clip shape rules: highlights have text plus an optional attached note; notes
+have text; bookmarks have no text (the body is just the word `Bookmark`).
+The stable-ID hash handles this naturally (`text` is empty for bookmarks).
 
 ### CLAUDE.md (the wiki schema)
 
@@ -119,9 +127,11 @@ Defines, in prose the agent follows:
   `vault/concepts/_index.md`: the concept list with one-liners, plus a
   per-book record of the last-ingested sync date.
 - **Ingest.** Read book files newer than their `_index.md` record; assign new
-  highlights to concepts. Reuse existing concept names whenever one fits
-  (read `_index.md` first); create new pages only for genuinely new ideas.
-  Update `_index.md` last.
+  highlights and notes to concepts. Bookmarks stay in book files but are not
+  ingested — with no text there is nothing to cite (default; revisit if a use
+  for them emerges). Reuse existing concept names whenever one fits (read
+  `_index.md` first); create new pages only for genuinely new ideas. Update
+  `_index.md` last.
 - **Lint.** Find near-duplicate concepts, orphan pages, quotes citing missing
   clip IDs, and index drift; propose fixes (merges are suggested to the user,
   not auto-applied).

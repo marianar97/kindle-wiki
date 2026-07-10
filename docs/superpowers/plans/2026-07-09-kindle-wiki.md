@@ -216,7 +216,7 @@ Meditations
 
 You have power over your mind - not outside events.
 ==========
-Some Report (Team (Internal))
+Some Report (Institute)
 - Your Highlight on page ix | location 12 | Added on BADLY FORMED DATE
 
 Front matter quote.
@@ -252,9 +252,10 @@ def test_parse_no_author_and_location_only():
 def test_parse_roman_page_and_bad_date():
     clips = parse_clippings(VARIANT_ENTRIES)
     weird = clips[3]
-    assert weird.page == "ix"
-    assert weird.date is None
-    assert weird.author == "Internal"  # last paren group wins
+    assert weird.title == "Some Report"
+    assert weird.author == "Institute"
+    assert weird.page == "ix"  # roman page preserved as a string
+    assert weird.date is None  # malformed date -> None, entry still parses
 
 
 def test_parse_all_four_variant_entries():

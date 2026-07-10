@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-SEPARATOR = "=========="
+SEPARATOR_RE = re.compile(r"(?m)^={10,}\r?$")
 DATE_FMT = "%A, %B %d, %Y %I:%M:%S %p"
 TITLE_RE = re.compile(r"^(?P<title>.*?)(?:\s*\((?P<author>[^()]*)\))?\s*$")
 META_RE = re.compile(
@@ -74,7 +74,7 @@ def parse_entry(block: str) -> Clip | None:
 
 def parse_clippings(text: str) -> list[Clip]:
     clips = []
-    for block in text.lstrip("﻿").split(SEPARATOR):
+    for block in SEPARATOR_RE.split(text.lstrip("﻿")):
         clip = parse_entry(block)
         if clip is not None:
             clips.append(clip)

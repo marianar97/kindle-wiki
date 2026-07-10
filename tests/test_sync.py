@@ -330,3 +330,16 @@ def test_run_is_idempotent(tmp_path, capsys):
     run(source, root)
     out = capsys.readouterr().out
     assert "0 new clips across 0 books" in out.splitlines()[-1]
+
+
+def test_parse_highlight_with_inline_equals_not_truncated():
+    entry = (
+        "Book (Author)\n"
+        "- Your Highlight on page 5 | location 50-51 | Added on Monday, June 1, 2026 9:00:00 PM\n"
+        "\n"
+        "Before the rule foo==========bar after the rule.\n"
+        "==========\n"
+    )
+    clips = parse_clippings(entry)
+    assert len(clips) == 1
+    assert clips[0].text == "Before the rule foo==========bar after the rule."

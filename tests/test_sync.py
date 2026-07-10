@@ -51,6 +51,7 @@ Front matter quote.
 def test_parse_note_entry():
     clips = parse_clippings(VARIANT_ENTRIES)
     note = clips[0]
+    assert note.title == "Peak"
     assert note.type == "note"
     assert note.location == "681"
     assert note.text == "Connect this to the coaching project."

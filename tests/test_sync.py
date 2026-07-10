@@ -252,3 +252,49 @@ def test_slugify():
     assert slugify("Peak") == "peak"
     assert slugify("Deep Work: Rules!") == "deep-work-rules"
     assert slugify("!!!") == "untitled"
+
+
+def test_write_vault_creates_files_and_counts(tmp_path):
+    from sync import group_books, write_vault
+    clips = [make_clip(text="One."), make_clip(text="Two.", location="700")]
+    books = group_books(clips)
+    new_clips, changed = write_vault(books, tmp_path, "2026-07-09")
+    assert (new_clips, changed) == (2, 1)
+    assert (tmp_path / "peak.md").exists()
+
+
+def test_write_vault_unchanged_content_skips_write(tmp_path):
+    from sync import group_books, write_vault
+    books = group_books([make_clip(text="One.")])
+    write_vault(books, tmp_path, "2026-07-09")
+    before = (tmp_path / "peak.md").read_text()
+    # Second run on a later date: only last_synced would differ -> skip.
+    new_clips, changed = write_vault(books, tmp_path, "2026-07-10")
+    assert (new_clips, changed) == (0, 0)
+    assert (tmp_path / "peak.md").read_text() == before
+
+
+def test_write_vault_counts_only_new_clip_ids(tmp_path):
+    from sync import group_books, write_vault
+    first = make_clip(text="One.")
+    write_vault(group_books([first]), tmp_path, "2026-07-09")
+    second = make_clip(text="Two.", location="700")
+    new_clips, changed = write_vault(
+        group_books([first, second]), tmp_path, "2026-07-10"
+    )
+    assert (new_clips, changed) == (1, 1)
+
+
+def test_write_vault_slug_collision_appends_author(tmp_path):
+    from sync import group_books, write_vault
+    a = make_clip(title="Essays", author="Montaigne", text="A.")
+    b = make_clip(title="Essays", author="Emerson", text="B.")
+    write_vault(group_books([a, b]), tmp_path, "2026-07-09")
+    names = sorted(p.name for p in tmp_path.glob("*.md"))
+    assert names == ["essays-emerson.md", "essays.md"]
+
+
+def test_write_vault_leaves_no_tmp_files(tmp_path):
+    from sync import group_books, write_vault
+    write_vault(group_books([make_clip(text="One.")]), tmp_path, "2026-07-09")
+    assert list(tmp_path.glob("*.tmp")) == []

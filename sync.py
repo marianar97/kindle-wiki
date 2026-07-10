@@ -7,6 +7,7 @@ import json
 import re
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
 
 SEPARATOR = "=========="
 DATE_FMT = "%A, %B %d, %Y %I:%M:%S %p"
@@ -17,6 +18,8 @@ META_RE = re.compile(
     r"(?:\s*\|?\s*(?:at )?location (?P<location>[\d-]+))?"
     r"(?:\s*\|\s*Added on (?P<date>.+))?$"
 )
+LAST_SYNCED_RE = re.compile(r"^last_synced: .*$", re.MULTILINE)
+BLOCK_ID_RE = re.compile(r"\^([0-9a-f]{12})")
 
 
 @dataclass
@@ -158,3 +161,34 @@ def render_book(
     lines += ["", "## Highlights", ""]
     body = "\n\n".join(render_clip(c) for c in clips)
     return "\n".join(lines) + f"\n{body}\n"
+
+
+def _strip_volatile(text: str) -> str:
+    return LAST_SYNCED_RE.sub("last_synced:", text)
+
+
+def write_vault(
+    books: dict[tuple[str, str | None], list[Clip]],
+    vault_dir: Path,
+    synced_on: str,
+) -> tuple[int, int]:
+    vault_dir.mkdir(parents=True, exist_ok=True)
+    new_clips, changed_books = 0, 0
+    used: set[str] = set()
+    for (title, author), clips in sorted(books.items(), key=lambda kv: kv[0][0]):
+        slug = slugify(title)
+        if slug in used:
+            slug = f"{slug}-{slugify(author or clips[0].id)}"
+        used.add(slug)
+        path = vault_dir / f"{slug}.md"
+        content = render_book(title, author, clips, synced_on)
+        old = path.read_text(encoding="utf-8") if path.exists() else ""
+        if _strip_volatile(old) == _strip_volatile(content):
+            continue
+        old_ids = set(BLOCK_ID_RE.findall(old))
+        new_clips += sum(1 for c in clips if c.id not in old_ids)
+        tmp = path.with_suffix(".md.tmp")
+        tmp.write_text(content, encoding="utf-8")
+        tmp.replace(path)
+        changed_books += 1
+    return new_clips, changed_books

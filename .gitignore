@@ -16,3 +16,5 @@ vault/wiki/source-notes/*.md
 vault/wiki/syntheses/*.md
 vault/wiki/projects/*
 !vault/wiki/projects/.gitkeep
+
+extension/node_modules/

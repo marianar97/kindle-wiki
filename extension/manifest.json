@@ -4,11 +4,18 @@
   "version": "0.1.0",
   "description": "Sync Kindle highlights from read.amazon.com/notebook into the Obsidian vault.",
   "action": {
-    "default_title": "Kindle Wiki Sync"
+    "default_title": "Kindle Wiki Sync",
+    "default_icon": {
+      "128": "icon.png"
+    }
+  },
+  "icons": {
+    "128": "icon.png"
   },
   "background": {
-    "service_worker": "src/background.js"
+    "service_worker": "src/background.js",
+    "type": "module"
   },
   "host_permissions": ["https://read.amazon.com/*"],
-  "permissions": ["storage", "tabs"]
+  "permissions": ["storage", "tabs", "alarms", "notifications"]
 }

@@ -18,6 +18,14 @@ Sole writer of `vault/raw/` — replaces the old `sync.py` / bookmarklet flow.
 4. Click **Sync highlights**. Progress shows per book; the summary reports
    new clips. Chrome may re-ask folder permission once per browser session.
 
+## Scheduled sync
+
+After choosing a vault, you can enable a background **Daily** or **Weekly**
+sync from the sync tab. The first run occurs one full interval later; changing
+the cadence does not start a sync immediately. Successful scheduled runs are
+silent. A failed scheduled run shows a Chrome notification and a red `!` on
+the extension icon; click the notification to open the sync tab and recover.
+
 ## What it writes
 
 - `vault/raw/books/<slug>.md` — rendered highlights, stable `^id` anchors.

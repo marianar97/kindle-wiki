@@ -23,9 +23,19 @@
     <section id="ready" class="card hidden">
       <button id="sync" class="button primary">Sync highlights</button>
       <p class="status-line">
-        <span id="vault-name"></span><span id="last-sync"></span>
+        <span id="vault-name"></span>
         &middot; <button id="change-vault" class="button link">change vault</button>
       </p>
+      <p id="manual-sync-status" class="status-line hidden"></p>
+      <section class="schedule">
+        <h2>Scheduled sync</h2>
+        <label><input type="radio" name="cadence" value="daily" checked> Daily</label>
+        <label><input type="radio" name="cadence" value="weekly"> Weekly</label>
+        <button id="schedule-toggle" class="button secondary">Enable scheduled sync</button>
+        <p id="schedule-status" class="status-line"></p>
+      </section>
+      <p id="last-success" class="status-line"></p>
+      <p id="scheduled-failure" class="error hidden"></p>
     </section>
 
     <section id="progress" class="card hidden">

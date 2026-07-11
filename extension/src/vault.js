@@ -75,9 +75,13 @@ export async function pickVault() {
   return handle;
 }
 
+export async function hasPermission(handle) {
+  return (await handle.queryPermission({ mode: "readwrite" })) === "granted";
+}
+
 export async function ensurePermission(handle) {
   const opts = { mode: "readwrite" };
-  if ((await handle.queryPermission(opts)) === "granted") return true;
+  if (await hasPermission(handle)) return true;
   return (await handle.requestPermission(opts)) === "granted";
 }
 

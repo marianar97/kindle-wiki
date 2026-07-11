@@ -1,6 +1,24 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from "vitest";
-import { parseLibrary, parseAnnotations, isLoginHtml } from "../src/scraper.js";
+import {
+  parseLibrary,
+  parseAnnotations,
+  isLoginHtml,
+  fetchLibrary,
+  fetchBookClips,
+  LoginRequiredError,
+} from "../src/scraper.js";
+
+function fakeFetch(pages) {
+  const calls = [];
+  const fn = async (url) => {
+    calls.push(url);
+    const body = pages.shift();
+    return { ok: true, redirected: false, url, text: async () => body };
+  };
+  fn.calls = calls;
+  return fn;
+}
 
 const LIBRARY_HTML = `
 <div id="kp-notebook-library">
@@ -83,5 +101,43 @@ describe("isLoginHtml", () => {
   it("detects the Amazon sign-in page", () => {
     expect(isLoginHtml('<form name="signIn" action="/ap/signin">')).toBe(true);
     expect(isLoginHtml(ANNOTATIONS_HTML)).toBe(false);
+  });
+});
+
+describe("fetchBookClips", () => {
+  it("follows the pagination token until empty", async () => {
+    const fetchFn = fakeFetch([PAGINATED_HTML, ANNOTATIONS_HTML]);
+    const clips = await fetchBookClips("B0FQGPMD79", { fetchFn });
+    expect(clips).toHaveLength(6); // 3 clips per fixture page
+    expect(fetchFn.calls[0]).toBe(
+      "https://read.amazon.com/notebook?asin=B0FQGPMD79&contentLimitState=&"
+    );
+    expect(fetchFn.calls[1]).toBe(
+      "https://read.amazon.com/notebook?asin=B0FQGPMD79&token=TOKEN123&contentLimitState=STATE456"
+    );
+  });
+
+  it("throws LoginRequiredError on a sign-in response", async () => {
+    const fetchFn = fakeFetch(['<form name="signIn" action="/ap/signin">']);
+    await expect(fetchBookClips("B0", { fetchFn })).rejects.toBeInstanceOf(LoginRequiredError);
+  });
+});
+
+describe("fetchLibrary", () => {
+  it("fetches and parses the notebook root", async () => {
+    const fetchFn = fakeFetch([LIBRARY_HTML]);
+    const books = await fetchLibrary({ fetchFn });
+    expect(books).toHaveLength(2);
+    expect(fetchFn.calls[0]).toBe("https://read.amazon.com/notebook");
+  });
+
+  it("throws LoginRequiredError when redirected to sign-in", async () => {
+    const fetchFn = async (url) => ({
+      ok: true,
+      redirected: true,
+      url: "https://www.amazon.com/ap/signin?openid=x",
+      text: async () => "<html></html>",
+    });
+    await expect(fetchLibrary({ fetchFn })).rejects.toBeInstanceOf(LoginRequiredError);
   });
 });

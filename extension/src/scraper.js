@@ -50,3 +50,39 @@ export function parseAnnotations(html) {
 export function isLoginHtml(html) {
   return /action="[^"]*\/ap\/signin|name="signIn"/i.test(html);
 }
+
+const NOTEBOOK_URL = "https://read.amazon.com/notebook";
+
+export class LoginRequiredError extends Error {
+  constructor() {
+    super("Not logged in to read.amazon.com");
+    this.name = "LoginRequiredError";
+  }
+}
+
+async function fetchNotebookHtml(url, fetchFn) {
+  const res = await fetchFn(url, { credentials: "include" });
+  if (res.redirected && /\/ap\/signin/.test(res.url)) throw new LoginRequiredError();
+  if (!res.ok) throw new Error(`Amazon returned HTTP ${res.status} for ${url}`);
+  const html = await res.text();
+  if (isLoginHtml(html)) throw new LoginRequiredError();
+  return html;
+}
+
+export async function fetchLibrary({ fetchFn = fetch } = {}) {
+  return parseLibrary(await fetchNotebookHtml(NOTEBOOK_URL, fetchFn));
+}
+
+export async function fetchBookClips(asin, { fetchFn = fetch } = {}) {
+  let url = `${NOTEBOOK_URL}?asin=${encodeURIComponent(asin)}&contentLimitState=&`;
+  const clips = [];
+  for (;;) {
+    const page = parseAnnotations(await fetchNotebookHtml(url, fetchFn));
+    clips.push(...page.clips);
+    if (!page.nextToken) return clips;
+    url =
+      `${NOTEBOOK_URL}?asin=${encodeURIComponent(asin)}` +
+      `&token=${encodeURIComponent(page.nextToken)}` +
+      `&contentLimitState=${encodeURIComponent(page.limitState)}`;
+  }
+}

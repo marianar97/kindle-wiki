@@ -3,8 +3,40 @@
 <head>
   <meta charset="utf-8">
   <title>Kindle Wiki Sync</title>
+  <link rel="stylesheet" href="sync-page.css">
 </head>
 <body>
-  <h1>Kindle Wiki Sync</h1>
+  <main class="app">
+    <header class="header">
+      <h1>Kindle Wiki Sync</h1>
+      <p class="subtitle">read.amazon.com/notebook &rarr; Obsidian vault</p>
+    </header>
+
+    <section id="setup" class="card hidden">
+      <h2>Connect your vault</h2>
+      <p>Pick the <code>vault</code> folder of your kindle-wiki repo. Highlights
+      are written to <code>raw/books/</code>; a JSON snapshot of every sync is
+      archived to <code>raw/clippings/</code>. You only do this once.</p>
+      <button id="pick-vault" class="button primary">Choose vault folder</button>
+    </section>
+
+    <section id="ready" class="card hidden">
+      <button id="sync" class="button primary">Sync highlights</button>
+      <p class="status-line">
+        <span id="vault-name"></span><span id="last-sync"></span>
+        &middot; <button id="change-vault" class="button link">change vault</button>
+      </p>
+    </section>
+
+    <section id="progress" class="card hidden">
+      <h2 id="progress-title">Syncing&hellip;</h2>
+      <ul id="book-list" class="book-list"></ul>
+      <p id="summary" class="summary hidden"></p>
+      <button id="sync-again" class="button primary hidden">Sync again</button>
+    </section>
+
+    <p id="error" class="error hidden"></p>
+  </main>
+  <script type="module" src="sync-page.js"></script>
 </body>
 </html>

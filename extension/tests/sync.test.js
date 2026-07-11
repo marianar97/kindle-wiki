@@ -41,7 +41,7 @@ describe("runSync", () => {
     expect(payload.books[0]).toMatchObject({ asin: "A1", title: "Book One" });
 
     expect(summary).toMatchObject({ books: 2, booksWritten: 1, newClips: 1, failures: [] });
-    expect(events.some((e) => e.kind === "book-done" && e.title === "Book One")).toBe(true);
+    expect(events.some((e) => e.kind === "book-done" && e.title === "Book One" && e.asin === "A1")).toBe(true);
   });
 
   it("continues past a failing book and reports it", async () => {

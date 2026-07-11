@@ -43,14 +43,14 @@ function addBookRow(title) {
 
 function onProgress(rows) {
   return (event) => {
-    if (event.kind === "book-start") rows.set(event.title, addBookRow(event.title));
+    if (event.kind === "book-start") rows.set(event.asin, addBookRow(event.title));
     if (event.kind === "book-done") {
-      const row = rows.get(event.title);
+      const row = rows.get(event.asin);
       row.li.className = "ok";
       row.meta.textContent = `${event.clips} highlights ✓`;
     }
     if (event.kind === "book-failed") {
-      const row = rows.get(event.title);
+      const row = rows.get(event.asin);
       row.li.className = "failed";
       row.meta.textContent = event.error;
     }

@@ -34,12 +34,12 @@ export async function runSync(deps, vaultHandle, onProgress) {
   const usedSlugs = new Set();
 
   for (const book of books) {
-    onProgress({ kind: "book-start", title: book.title });
+    onProgress({ kind: "book-start", title: book.title, asin: book.asin });
     try {
       const rawClips = await fetchBookClips(book.asin);
       snapshot.books.push({ ...book, clips: rawClips });
       if (rawClips.length === 0) {
-        onProgress({ kind: "book-done", title: book.title, clips: 0, written: false });
+        onProgress({ kind: "book-done", title: book.title, asin: book.asin, clips: 0, written: false });
         continue;
       }
       const clips = sortClips(
@@ -54,13 +54,19 @@ export async function runSync(deps, vaultHandle, onProgress) {
       const result = await writeBook(vaultHandle, slug, content, clips);
       if (result.written) summary.booksWritten += 1;
       summary.newClips += result.newClips;
-      onProgress({ kind: "book-done", title: book.title, clips: clips.length, written: result.written });
+      onProgress({
+        kind: "book-done",
+        title: book.title,
+        asin: book.asin,
+        clips: clips.length,
+        written: result.written,
+      });
     } catch (err) {
       if (!snapshot.books.some((b) => b.asin === book.asin)) {
         snapshot.books.push({ ...book, clips: [], error: err.message });
       }
       summary.failures.push({ title: book.title, error: err.message });
-      onProgress({ kind: "book-failed", title: book.title, error: err.message });
+      onProgress({ kind: "book-failed", title: book.title, asin: book.asin, error: err.message });
     }
   }
 

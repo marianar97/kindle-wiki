@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Sync Kindle highlights from My Clippings.txt into vault/books/*.md."""
+"""Sync Kindle highlights from My Clippings.txt into vault/raw/books/*.md."""
 from __future__ import annotations
 
 import argparse
@@ -205,7 +205,7 @@ def run(source: Path, root: Path) -> int:
         print(f"Clippings file not found: {source}", file=sys.stderr)
         print("Is the Kindle plugged in?", file=sys.stderr)
         return 1
-    copies = root / "data" / "clippings"
+    copies = root / "vault" / "raw" / "clippings"
     copies.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now().strftime("%Y-%m-%d-%H%M%S")
     copy_path = copies / f"{stamp}-My Clippings.txt"
@@ -213,7 +213,7 @@ def run(source: Path, root: Path) -> int:
     clips = dedupe(parse_clippings(copy_path.read_text(encoding="utf-8")))
     books = group_books(clips)
     synced_on = datetime.now().strftime("%Y-%m-%d")
-    new_clips, changed = write_vault(books, root / "vault" / "books", synced_on)
+    new_clips, changed = write_vault(books, root / "vault" / "raw" / "books", synced_on)
     print(
         f"{new_clips} new clips across {changed} books "
         f"({len(clips)} clips in {len(books)} books total)"

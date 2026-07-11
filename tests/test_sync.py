@@ -308,8 +308,8 @@ def test_run_end_to_end(tmp_path, capsys):
     assert run(source, root) == 0
     out = capsys.readouterr().out
     assert "1 new clips across 1 books" in out
-    assert (root / "vault" / "books" / "peak.md").exists()
-    copies = list((root / "data" / "clippings").glob("*My Clippings.txt"))
+    assert (root / "vault" / "raw" / "books" / "peak.md").exists()
+    copies = list((root / "vault" / "raw" / "clippings").glob("*My Clippings.txt"))
     assert len(copies) == 1
 
 

@@ -30,8 +30,9 @@ Python scripts and the bookmarklet retire.
   No native messaging, no Python.
 - **Format compatibility:** the extension reproduces `sync.py`'s output
   byte-for-byte — same block IDs,   same slugs, same markdown layout — so existing `![[slug#^id]]` embeds keep
-  resolving and re-syncs don't churn files (one exception: the generated-file
-  comment line changes once; see renderer section).
+  resolving and re-syncs don't churn files. Exceptions: a one-time rewrite of
+  comment and meta lines (extension attribution, highlight color added,
+  page numbers dropped); see renderer section.
 - **UI:** full-page extension tab (not a popup), styled after Obsidian's
   dark theme.
 
@@ -66,7 +67,8 @@ Fetches the same internal endpoints the notebook page itself uses:
 Responses are HTML fragments parsed with `DOMParser` using the selectors
 already verified against the live DOM on 2026-07-10 (`#highlight`, `#note`,
 `#kp-annotation-location`, `#annotationHighlightHeader`,
-`h3.kp-notebook-metadata`). Parsing functions are pure (HTML string in,
+`h3.kp-notebook-metadata`). The highlight color and location come from the
+`#annotationHighlightHeader` text, e.g. `Orange highlight | Location: 102`. Parsing functions are pure (HTML string in,
 data out) so they are unit-testable without a browser session.
 
 Login detection: if a response is a sign-in page or a redirect, the sync
@@ -81,11 +83,15 @@ user just needs that tab open.
 
 Direct port of `sync.py` semantics:
 
-- **Clip:** `{title, author, type: highlight|note, page, location, text}`.
-  (Bookmarks don't appear on the notebook page; the `bookmark` render branch
-  is not ported.)
+- **Clip:** `{title, author, type: highlight|note, location, text, color}`.
+  No `page` field — the notebook page doesn't show page numbers, only
+  locations. `color` is the highlight color parsed from
+  `#annotationHighlightHeader` (e.g. `Orange highlight | Location: 102`);
+  null for notes. (Bookmarks don't appear on the notebook page; the
+  `bookmark` render branch is not ported.)
 - **Block ID:** first 12 hex chars of `sha1("title|type|location|text")`
-  via `crypto.subtle.digest`.
+  via `crypto.subtle.digest`. Color is deliberately excluded from the hash,
+  so recoloring a highlight on Amazon does not change its ID or break embeds.
 - **Dedupe:** by ID, first occurrence wins (no dates on notebook data).
 - **Ordering:** by numeric location start, then type rank
   (highlight before note).
@@ -93,17 +99,21 @@ Direct port of `sync.py` semantics:
   `-<author-slug>` suffix.
 - **File:** frontmatter (`title`, `author`, `last_synced`), generated-file
   comment, `# Title`, `*Author*`, `## Highlights`, clips separated by blank
-  lines. Highlights render as blockquotes with a `— highlight · loc. N ^id`
-  meta line; notes as `Note: ... ^id`.
-- The generated-file comment updates to name the extension instead of
-  `sync.py`. This causes a **one-time rewrite** of every book file on the
-  first extension sync (comment line only — IDs, slugs, and quote text are
-  unchanged, so embeds are unaffected).
+  lines. Highlights render as blockquotes with a
+  `— highlight · orange · loc. N ^id` meta line (color between type and
+  location, omitted if unknown); notes as `Note: ... ^id`.
+- Intentional divergences from `sync.py` output: the generated-file comment
+  names the extension, the meta line gains the color, and the `p. N` part
+  disappears with the `page` field. Together these cause a **one-time
+  rewrite** of every book file on the first extension sync — meta/comment
+  lines only; IDs, slugs, and quote text are unchanged, so embeds are
+  unaffected.
 
-Renderer output is validated by golden-file tests: fixtures generated from
-the current Python code against real vault data **before** the Python is
-deleted, asserted byte-for-byte (modulo the volatile `last_synced` value and
-the generated-comment text).
+Renderer output is validated by golden-file tests: fixtures start from the
+current Python output against real vault data (generated **before** the
+Python is deleted), hand-adjusted for the three intentional divergences
+above, then asserted byte-for-byte (modulo the volatile `last_synced`
+value).
 
 ### Component: vault writer
 
@@ -150,9 +160,9 @@ typography, generous spacing. Three states:
   books from the vault, byte-for-byte.
 - Vault writer's skip-unchanged logic tested against in-memory content pairs.
 - End-to-end (manual): run against the real library, then `git diff vault/raw`
-  on books already imported via the old pipeline must show only the
-  generated-comment line and `last_synced` — no changes to quotes, meta
-  lines, or block IDs.
+  on books already imported via the old pipeline must show only the expected
+  one-time rewrites (generated comment, color added, page dropped,
+  `last_synced`) — no changes to quotes or block IDs.
 
 ## Cleanup (after end-to-end verification)
 

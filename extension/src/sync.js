@@ -11,7 +11,14 @@ function today() {
 
 function uniqueSlug(title, author, used) {
   let slug = slugify(title);
-  if (used.has(slug)) slug = `${slug}-${slugify(author || "unknown")}`;
+  if (used.has(slug)) {
+    const base = `${slug}-${slugify(author || "unknown")}`;
+    slug = base;
+    let n = 2;
+    while (used.has(slug)) {
+      slug = `${base}-${n++}`;
+    }
+  }
   used.add(slug);
   return slug;
 }
@@ -49,6 +56,9 @@ export async function runSync(deps, vaultHandle, onProgress) {
       summary.newClips += result.newClips;
       onProgress({ kind: "book-done", title: book.title, clips: clips.length, written: result.written });
     } catch (err) {
+      if (!snapshot.books.some((b) => b.asin === book.asin)) {
+        snapshot.books.push({ ...book, clips: [], error: err.message });
+      }
       summary.failures.push({ title: book.title, error: err.message });
       onProgress({ kind: "book-failed", title: book.title, error: err.message });
     }

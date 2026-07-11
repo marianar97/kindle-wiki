@@ -54,6 +54,15 @@ describe("runSync", () => {
     const summary = await runSync(d, "vault-handle", () => {});
     expect(summary.failures).toEqual([{ title: "Book One", error: "parse exploded" }]);
     expect(d.writeBook).toHaveBeenCalledTimes(1); // Book Two still written
+
+    const payload = d.archiveSnapshot.mock.calls[0][1];
+    expect(payload.books).toHaveLength(2);
+    expect(payload.books[0]).toMatchObject({
+      asin: "A1",
+      title: "Book One",
+      clips: [],
+      error: "parse exploded",
+    });
   });
 
   it("suffixes the slug when two books collide", async () => {
@@ -67,5 +76,19 @@ describe("runSync", () => {
     await runSync(d, "vault-handle", () => {});
     const slugs = d.writeBook.mock.calls.map((c) => c[1]);
     expect(slugs).toEqual(["same-title", "same-title-bob"]);
+  });
+
+  it("appends numeric suffixes when title and author collide", async () => {
+    const d = deps({
+      fetchLibrary: vi.fn(async () => [
+        { asin: "A1", title: "Same Title", author: "Alice" },
+        { asin: "A2", title: "Same Title", author: "Alice" },
+        { asin: "A3", title: "Same Title", author: "Alice" },
+      ]),
+      fetchBookClips: vi.fn(async () => CLIPS_A1),
+    });
+    await runSync(d, "vault-handle", () => {});
+    const slugs = d.writeBook.mock.calls.map((c) => c[1]);
+    expect(slugs).toEqual(["same-title", "same-title-alice", "same-title-alice-2"]);
   });
 });

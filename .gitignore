@@ -12,6 +12,7 @@ vault/wiki/authors/*.md
 vault/wiki/books/*.md
 vault/wiki/concepts/*.md
 vault/wiki/entities/*.md
+vault/wiki/people/*.md
 vault/wiki/themes/*.md
 vault/wiki/source-notes/*.md
 vault/wiki/syntheses/*.md

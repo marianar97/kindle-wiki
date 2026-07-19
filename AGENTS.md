@@ -81,7 +81,17 @@ the existing page; never create a separate page for an alias.
 - Prefer an existing page over creating a near-synonym. Read `index.md` and
 existing aliases before naming anything new.
 - Every wiki page carries `created` and `updated` dates and a `related:` list
-(3–5 closest pages by filename stem). Keep `updated` honest.
+of up to five genuinely close content pages by filename stem. Prefer fewer
+meaningful links over padding. Never include `index`, `log`, or an unrelated
+page merely to meet a count. Keep `updated` honest.
+- `tags` is a controlled optional field. Folder membership and `type` define
+page taxonomy, so do not duplicate them with tags such as `#author`, `#person`,
+`#book`, or `#source-note`. Use `tags: []` unless a tag adds information not
+already represented by the page type or its graph links.
+- Every wikilink must target the exact lowercase filename stem, with the page
+title supplied as its display label: `[[filename-stem|Page Title]]`. Obsidian
+resolves filenames, not the `title` frontmatter property. Raw highlight embeds
+remain `![[<exact-raw-file-stem>#^<block-id>]]`.
 - No emojis anywhere.
 
 ## Folder conventions (`vault/wiki/`)
@@ -118,18 +128,18 @@ book: <exact-raw-file-stem>      # matches raw/books/<exact-raw-file-stem>.md
 ref: ^<block-id>                 # e.g. ^ref-43252
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
-tags: #source-note
-related: []                      # 3-5 closest pages, filename stems
+tags: []
+related: []                      # up to 5 genuinely close content page stems
 ---
 
 ![[<exact-raw-file-stem>#^<block-id>]]
 
 <One line: what this highlight means or why it matters. Not a restatement.>
 
-**Concepts:** [[Concept Name]]
-**Authors:** [[Author Name]]
-**Entities:** [[Entity Name]]
-**Themes:** [[Theme Name]]
+**Concepts:** [[concept-slug|Concept Name]]
+**Authors:** [[author-slug|Author Name]]
+**Entities:** [[entity-slug|Entity Name]]
+**Themes:** [[theme-slug|Theme Name]]
 ```
 
 ### Book — `wiki/books/<title-and-author-slug>.md`
@@ -138,6 +148,9 @@ Editorial hub for a book. Metadata plus synthesis plus an index of its source
 notes. Never re-type highlights here — link to their source notes; embed a quote
 only to make an editorial point. Name the file so it does NOT collide with the
 raw slug (e.g. `peak-anders-ericsson.md`, while the raw file is `peak.md`).
+Use one to three standardized, broad genres in Title Case. Prefer specific,
+useful labels over redundant parent categories. If the genres are uncertain,
+verify them against a reliable publisher or library source online.
 
 ```markdown
 ---
@@ -145,10 +158,11 @@ title: ""
 type: book
 author: ""
 year:                            # publication year or null
+genres: []                       # 1-3 standardized broad genres
 book-slug: <exact-raw-file-stem> # points at raw/books/<exact-raw-file-stem>.md
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
-tags: [#book, any other tag]
+tags: []
 related: []
 ---
 
@@ -159,14 +173,14 @@ related: []
 [2-4 sentences on the book's central argument or content.]
 
 ## Themes
-- [[Theme Name]]
+- [[theme-slug|Theme Name]]
 
 ## Concepts
-- [[Concept Name]]
+- [[concept-slug|Concept Name]]
 
 ## Source Notes
 Highlights from this book with pages in the wiki:
-- [[Source Note Title]]
+- [[source-note-slug|Source Note Title]]
 
 ## Raw highlights
 Full generated highlights: `raw/books/<exact-raw-file-stem>.md`
@@ -192,14 +206,14 @@ related: []
 [Clear, precise definition. If contested or multiply-defined, say so explicitly.]
 
 ## Key Thinkers
-- [[Author Name]] — [their version/use of this concept]
+- [[author-slug|Author Name]] — [their version/use of this concept]
 
 ## Related Concepts
-- [[Concept Name]] — [how it relates]
+- [[concept-slug|Concept Name]] — [how it relates]
 
 ## Source Support
 Source notes in the wiki that discuss this concept:
-- [[Source Note Title]]
+- [[source-note-slug|Source Note Title]]
 
 ## Open Questions
 - [Unresolved question about this concept]
@@ -216,7 +230,7 @@ aliases:
 type: author
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
-tags: [#author, any other tags]
+tags: []
 related: []
 ---
 
@@ -229,14 +243,14 @@ related: []
 - *[Title]* (YYYY) — [one-line description]
 
 ## Key Concepts
-- [[Concept Name]]
+- [[concept-slug|Concept Name]]
 
 ## Relevance to Mariana's Research
 [Concrete explanation of why this author matters to her projects.]
 
 ## Source Support
 Source notes drawn from this author's work:
-- [[Source Note Title]]
+- [[source-note-slug|Source Note Title]]
 ```
 
 ### Person — `wiki/people/<person-slug>.md`
@@ -251,7 +265,7 @@ aliases:
 type: person
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
-tags: [#person, any other tags]
+tags: []
 related: []
 ---
 
@@ -265,10 +279,10 @@ why they are notable. Look online if needed.]
 [How this person appears in the sources and why they warrant a page.]
 
 ## Associated Concepts
-- [[Concept Name]]
+- [[concept-slug|Concept Name]]
 
 ## Source Support
-- [[Source Note Title]]
+- [[source-note-slug|Source Note Title]]
 ```
 
 ### Entity — `wiki/entities/<entity-slug>.md`
@@ -285,7 +299,7 @@ entity-kind:                     # organization | place | work | event
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
 tags: []
-related: [#concept, any other related tag]
+related: []
 ---
 
 # [Entity Name]
@@ -297,7 +311,7 @@ related: [#concept, any other related tag]
 [How it appears in the sources / why it is worth a page.]
 
 ## Source Support
-- [[Source Note Title]]
+- [[source-note-slug|Source Note Title]]
 
 ```
 
@@ -321,16 +335,16 @@ related: []
 [What this cluster is about and what it pulls together.]
 
 ## Concepts in this theme
-- [[Concept Name]]
+- [[concept-slug|Concept Name]]
 
 ## Authors in this theme
-- [[Author Name]]
+- [[author-slug|Author Name]]
 
 ## Source Support
-- [[Source Note Title]]
+- [[source-note-slug|Source Note Title]]
 
 ## Syntheses
-- [[Synthesis Title]]
+- [[synthesis-slug|Synthesis Title]]
 
 ## Open Questions
 - [Cross-cutting question this theme raises]
@@ -359,11 +373,12 @@ related: []
 
 ## Argument
 [The synthesized position, drawing across sources. Cite wiki pages inline as
-[[Page Name]]. Embed a raw quote only where the exact wording carries the point.]
+[[page-slug|Page Name]]. Embed a raw quote only where the exact wording carries
+the point.]
 
 ## Sources drawn on
-- [[Source Note Title]]
-- [[Concept Name]]
+- [[source-note-slug|Source Note Title]]
+- [[concept-slug|Concept Name]]
 
 ## Open Questions
 - [What remains unresolved]
@@ -471,8 +486,8 @@ seriously as ingest.
   which sources support each side.
 4. **Broken embeds** — `![[<exact-raw-file-stem>#^ref-id]]` targets whose raw
    file or `^ref-*` block no longer exists in `raw/books/`. Report each.
-5. **Missing pages** — wiki-link-style mentions (`[[X]]`) with no corresponding
-  file. List them.
+5. **Missing pages** — wikilink targets (`[[filename-stem|Page Title]]`) with no
+corresponding file. List them.
 6. **Orphan pages** — pages with no inbound links from any other wiki page.
 7. **Overgrown pages** — pages too large to serve their purpose; propose a split.
 8. **Weak/generic pages** — thin content, vague definitions, no source support.

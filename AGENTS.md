@@ -24,7 +24,7 @@ stale claims, contradictions, thin stubs, tangled links. You are its **keeper**.
 Keeping means two duties held in balance:
 
 - **Growth** — every ingest adds source notes and ripples outward into concepts,
-authors, entities, and themes, thickening the graph of connections.
+people, entities, and themes, thickening the graph of connections.
 - **Maintenance and repair** — you continuously prune duplicates, reconcile
 contradictions, refresh stale pages, connect orphans, and split what has
 overgrown. A page you created last month is your responsibility today.
@@ -70,23 +70,24 @@ query, or lint authorizes investigation only, not writing. Once Mariana approves
 the proposed batch, complete it without asking again unless the scope materially
 changes.
 - Page names: short, Title Case, singular ("Feedback Loop", not "feedback loops").
-Files are lowercase-kebab-case (`feedback-loop.md`); the page's `title`
-frontmatter carries the display name.
-- **Canonical pages and aliases:** A concept, author, person, or entity must have
+Files are lowercase-kebab-case (`feedback-loop.md`). Books and source notes use
+`title` for their display label; people, concepts, entities, and themes use
+`name`.
+- **Canonical pages and aliases:** A concept, person, entity, or theme must have
 exactly one canonical page and carry a YAML `aliases` property (`aliases: []`
 when none exist). Store alternate names, abbreviations, acronyms, and spelling
 variants there as a YAML list, with one alias per line. Before creating a page,
-search existing page titles and aliases. If either matches, link to and update
+search existing names, titles, and aliases. If any matches, link to and update
 the existing page; never create a separate page for an alias.
 - Prefer an existing page over creating a near-synonym. Read `index.md` and
 existing aliases before naming anything new.
 - Every wiki page carries `created` and `updated` dates and a `related:` list
 of up to five genuinely close content-page wikilinks. Store each entry as a
-quoted YAML string using the canonical filename stem and display title, for
+quoted YAML string using the canonical filename stem and display label, for
 example `- "[[ai-alignment|AI Alignment]]"`, so it remains clickable in
 Obsidian's Properties view. Prefer fewer meaningful links over padding. Never
 include `index`, `log`, or an unrelated page merely to meet a count. Keep
-`updated` honest.
+`updated` honest. Do not duplicate a typed relationship in `related:`.
 - `tags` is an open-ended optional facet system for useful roles, disciplines,
 industries, methods, provenance, and other cross-cutting categories that do not
 necessarily warrant canonical pages. Before creating a tag, search both current
@@ -96,29 +97,80 @@ variants rather than creating parallel tags. Use lowercase kebab-case values
 without a leading `#`, generally 1–5 per tagged page. Do not duplicate page type,
 book genres, or relationships already represented adequately by graph links.
 Log every genuinely new tag and any synonym-normalization decision.
-- Every wikilink must target the exact lowercase filename stem, with the page
-title supplied as its display label: `[[filename-stem|Page Title]]`. Obsidian
-resolves filenames, not the `title` frontmatter property. Raw highlight embeds
-remain `![[<exact-raw-file-stem>#^<block-id>]]`.
+- Every wikilink must target the exact lowercase filename stem, with the page's
+`name` or `title` supplied as its display label:
+`[[filename-stem|Display Label]]`. Obsidian resolves filenames, not frontmatter
+labels. Raw highlight embeds remain
+`![[<exact-raw-file-stem>#^<block-id>]]`.
 - No emojis anywhere.
 
 ## Folder conventions (`vault/wiki/`)
 
 The wiki is organized as a lightweight ontology. Its folders define the primary
-taxonomy of page types—such as concepts, authors, people, entities, and
-sources. Each page is a node in the knowledge graph, while wikilinks represent
-relationships between nodes. Folder membership defines what a page is; link
-labels, surrounding sections, and frontmatter define how pages relate.
+taxonomy of page types. Each page is a node in the knowledge graph, while typed
+frontmatter wikilinks represent relationships between nodes. Folder membership
+and `type` define what a page is; relationship fields define how pages relate.
 
 - `source-notes/` — one page per highlight or Kindle note
 - `concepts/` — one page per concept (an abstract idea).
-- `authors/` — one page per author.
-- `people/` — one page per person mentioned in a source who is not the source's
-author.
+- `people/` — one page per person. An author is a person in the `authors`
+relationship to a book, not a separate page type.
 - `entities/` — one page per named real-world thing (organization, place, work,
 event, or other non-person thing).
 - `books/` — one editorial hub page per book.
-- `syntheses/` — evolving argumentative overviews across multiple sources.
+
+Folder names are plural because they contain collections. Ontology type values
+are singular.
+
+## Light ontology and typed relationships
+
+### Node types
+
+- **Book** (`type: book`) — an editorial page for an imported book.
+- **Person** (`type: person`) — any human who authors or appears in a source.
+- **Concept** (`type: concept`) — an abstract idea developed across sources.
+- **Entity** (`type: entity`) — an organization, place, work, or event.
+- **Theme** (`type: theme`) — a broad research area that groups concepts only.
+- **Source Note** (`type: source-note`) — the evidence node for one anchored
+  Kindle highlight or note.
+
+There is no `author` node type: authorship is a relationship between a Book and
+a Person.
+
+### Allowed relationship fields
+
+All relationship values are quoted Obsidian wikilinks to existing canonical
+pages. These fields and target types are the ontology contract:
+
+- `Book.authors -> Person` — one or more.
+- `Source Note.book -> Book` — exactly one.
+- `Source Note.concepts -> Concept` — zero or more.
+- `Source Note.people -> Person` — zero or more.
+- `Source Note.entities -> Entity` — zero or more.
+- `Theme.concepts -> Concept` — one or more.
+- `Concept.key-thinkers -> Person` — zero or more.
+- `Concept.related-concepts -> Concept` — zero or more.
+
+Store each relationship in its canonical direction only. Do not maintain inverse
+copies. Use `[]` when an allowed zero-or-more relationship has no targets.
+
+### Stored, interpreted, and computed links
+
+- **Stored links** are direct, authoritative relationships in frontmatter. They
+  include factual metadata such as a Book's `authors` and curated classifications
+  such as a Theme's `concepts`.
+- **Interpreted links** are stored links that express a supported intellectual
+  judgment. A `key-thinkers` link is valid only when ingested sources establish
+  the person's substantive position; explain that position in the Concept page
+  and cite its supporting Source Notes.
+- **Computed links** are inferred from stored relationships and must not be
+  duplicated as canonical frontmatter. A Person's authored books are the inverse
+  of `Book.authors`. A Book discusses the Concepts and mentions the People and
+  Entities linked by its Source Notes.
+
+Body sections may display computed views for readers, but the agent must
+regenerate them from canonical relationships when updating the page.
+`related:` remains an untyped navigation aid, not an ontology predicate.
 ---
 
 
@@ -130,10 +182,17 @@ a one-line gloss, and links into the graph.
 ```markdown
 ---
 title: ""                        # short descriptive title of this highlight
-type: highlight | note
-author: <kindle-author>
-book: <exact-raw-file-stem>      # matches raw/books/<exact-raw-file-stem>.md
-ref: ^<block-id>                 # e.g. ^ref-43252
+type: source-note
+kind: highlight                 # highlight | note
+book: "[[book-page-slug|Book Title]]"
+book-slug: "<exact-raw-file-stem>" # matches raw/books/<exact-raw-file-stem>.md
+ref: "^<block-id>"               # e.g. ^ref-43252
+concepts:
+  - "[[concept-slug|Concept Name]]"
+people:
+  - "[[person-slug|Person Name]]"
+entities:
+  - "[[entity-slug|Entity Name]]"
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
 tags: []
@@ -143,31 +202,28 @@ related: []                      # up to 5 quoted, clickable content-page wikili
 ![[<exact-raw-file-stem>#^<block-id>]]
 
 <One line: what this highlight means or why it matters. Not a restatement.>
-
-**Concepts:** [[concept-slug|Concept Name]]
-**Authors:** [[author-slug|Author Name]]
-**Entities:** [[entity-slug|Entity Name]]
-**Themes:** [[theme-slug|Theme Name]]
 ```
 
 ### Book — `wiki/books/<title-and-author-slug>.md`
 
-Editorial hub for a book. Metadata plus synthesis plus an index of its source
-notes. Never re-type highlights here — link to their source notes; embed a quote
-only to make an editorial point. Name the file so it does NOT collide with the
-raw slug (e.g. `peak-anders-ericsson.md`, while the raw file is `peak.md`).
-Use one to three standardized, broad genres in Title Case. Prefer specific,
-useful labels over redundant parent categories. If the genres are uncertain,
-verify them against a reliable publisher or library source online.
+Editorial hub for a book. Metadata, summary, and computed views of the concepts,
+themes, and source notes connected to it. Never re-type highlights here — link
+to their source notes; embed a quote only to make an editorial point. Name the
+file so it does NOT collide with the raw slug (e.g.
+`peak-anders-ericsson.md`, while the raw file is `peak.md`). Use one to three
+standardized, broad genres in Title Case. Prefer specific, useful labels over
+redundant parent categories. If the genres are uncertain, verify them against a
+reliable publisher or library source online.
 
 ```markdown
 ---
 title: ""
 type: book
-author: ""
-year:                            # publication year or null
+authors:                         # one or more Person links
+  - "[[person-slug|Person Name]]"
+year: null                       # publication year or null
 genres: []                       # 1-3 standardized broad genres
-book-slug: <exact-raw-file-stem> # points at raw/books/<exact-raw-file-stem>.md
+book-slug: "<exact-raw-file-stem>" # points at raw/books/<exact-raw-file-stem>.md
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
 tags: []
@@ -175,18 +231,19 @@ related: []
 ---
 
 # [Book Title]
-*[Author]*
 
 ## Summary
 [2-4 sentences on the book's central argument or content.]
 
-## Themes
+## Themes (computed)
+Derived through the Concepts discussed by this book's Source Notes:
 - [[theme-slug|Theme Name]]
 
-## Concepts
+## Concepts (computed)
+Derived from this book's Source Notes:
 - [[concept-slug|Concept Name]]
 
-## Source Notes
+## Source Notes (computed)
 Highlights from this book with pages in the wiki:
 - [[source-note-slug|Source Note Title]]
 
@@ -203,10 +260,14 @@ available source support does not establish a substantive position.
 
 ```markdown
 ---
-title: ""
+name: ""
 aliases:
-  - <alternate name, abbreviation, acronym, or spelling variant>
+  - "<alternate name, abbreviation, acronym, or spelling variant>"
 type: concept
+key-thinkers:
+  - "[[person-slug|Person Name]]"
+related-concepts:
+  - "[[concept-slug|Concept Name]]"
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
 tags: []
@@ -224,7 +285,7 @@ related: []
 ## Related Concepts
 - [[concept-slug|Concept Name]] — [how it relates]
 
-## Source Support
+## Source Support (computed)
 Source notes in the wiki that discuss this concept:
 - [[source-note-slug|Source Note Title]]
 
@@ -233,49 +294,19 @@ Source notes in the wiki that discuss this concept:
 
 ```
 
-### Author — `wiki/authors/<author-slug>.md`
-
-```markdown
----
-title: ""
-aliases:
-  - <alternate name, abbreviation, acronym, or spelling variant>
-type: author
-created: YYYY-MM-DD
-updated: YYYY-MM-DD
-tags: []
-related: []
----
-
-# [Author Name]
-
-## Bio Sketch
-[2-4 sentences: who they are, when they worked, discipline, why they matter. Look online if you don't know]
-
-## Key Works
-- *[Title]* (YYYY) — [one-line description]
-
-## Key Concepts
-- [[concept-slug|Concept Name]]
-
-## Relevance to Mariana's Research
-[Concrete explanation of why this author matters to her projects.]
-
-## Source Support
-Source notes drawn from this author's work:
-- [[source-note-slug|Source Note Title]]
-```
-
 ### Person — `wiki/people/<person-slug>.md`
 
-For people mentioned in a source who are not the source's author.
+For every person represented in the wiki, including book authors and people
+mentioned in sources. Never create separate Author and Person pages for the same
+human.
 
 ```markdown
 ---
-title: ""
+name: ""
 aliases:
-  - <alternate name, abbreviation, acronym, or spelling variant>
+  - "<alternate name, abbreviation, acronym, or spelling variant>"
 type: person
+birth-year: null                # year or null
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
 tags: []
@@ -291,24 +322,32 @@ why they are notable. Look online if needed.]
 ## Why they matter here
 [How this person appears in the sources and why they warrant a page.]
 
-## Associated Concepts
+## Authored Books (computed)
+Derived from Book `authors` relationships:
+- [[book-slug|Book Title]]
+
+## Associated Concepts (computed)
+Derived from Concept `key-thinkers` relationships:
 - [[concept-slug|Concept Name]]
 
-## Source Support
+## Source Support (computed)
+Source Notes that mention this person:
 - [[source-note-slug|Source Note Title]]
 ```
 
 ### Entity — `wiki/entities/<entity-slug>.md`
 
-For named real-world things: organizations, places, works, events.
+For named real-world things: organizations, places, works, events. A Book is a
+specialized work type; never create a duplicate Entity page for a Book already
+represented in `wiki/books/`.
 
 ```markdown
 ---
-title: ""
+name: ""
 aliases:
-  - <alternate name, abbreviation, acronym, or spelling variant>
+  - "<alternate name, abbreviation, acronym, or spelling variant>"
 type: entity
-entity-kind:                     # organization | place | work | event
+entity-kind: organization        # organization | place | work | event
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
 tags: []
@@ -323,19 +362,26 @@ related: []
 ## Why it matters here
 [How it appears in the sources / why it is worth a page.]
 
-## Source Support
+## Source Support (computed)
+Source Notes that mention this entity:
 - [[source-note-slug|Source Note Title]]
 
 ```
 
+### Theme — `wiki/themes/<theme-slug>.md`
 
-A broad cluster that gathers concepts, authors, and source notes. The primary
-navigation layer for queries.
+A broad research area that groups Concepts only. Books, People, Entities, and
+Source Notes remain discoverable through those Concepts and their evidence.
+Themes are the primary navigation layer for queries.
 
 ```markdown
 ---
-title: ""
+name: ""
+aliases:
+  - "<alternate name, abbreviation, acronym, or spelling variant>"
 type: theme
+concepts:
+  - "[[concept-slug|Concept Name]]"
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
 tags: []
@@ -350,51 +396,12 @@ related: []
 ## Concepts in this theme
 - [[concept-slug|Concept Name]]
 
-## Authors in this theme
-- [[author-slug|Author Name]]
-
-## Source Support
+## Source Support (computed)
+Derived through the Concepts in this theme:
 - [[source-note-slug|Source Note Title]]
-
-## Syntheses
-- [[synthesis-slug|Synthesis Title]]
 
 ## Open Questions
 - [Cross-cutting question this theme raises]
-```
-
-
-
-### Synthesis — `wiki/syntheses/<synthesis-slug>.md`
-
-An evolving argument that draws across multiple sources.
-
-```markdown
----
-title: ""
-type: synthesis
-created: YYYY-MM-DD
-updated: YYYY-MM-DD
-tags: []
-related: []
----
-
-# [Synthesis Title]
-
-## Question
-[The question or thesis this synthesis addresses.]
-
-## Argument
-[The synthesized position, drawing across sources. Cite wiki pages inline as
-[[page-slug|Page Name]]. Embed a raw quote only where the exact wording carries
-the point.]
-
-## Sources drawn on
-- [[source-note-slug|Source Note Title]]
-- [[concept-slug|Concept Name]]
-
-## Open Questions
-- [What remains unresolved]
 ```
 
 ## `index.md`
@@ -434,23 +441,26 @@ query surfaces ("gap identified"), and every lint pass.
    separator.
 3. **Discuss key takeaways with Mariana before writing anything.** Identify: the
    book's central argument, key claims, surprising or important moments, the
-   concepts / authors / people / entities / themes it touches, and connections
-   to existing wiki pages.
-4. Create a **source note per anchored highlight** in `wiki/source-notes/`
+   concepts / people / entities / themes it touches, the book's author or
+   authors, and connections to existing wiki pages.
+4. Create or update canonical **Person pages for the book's authors**, then
+   create or update the **Book editorial page** in `wiki/books/`. Store
+   authorship once in `Book.authors`. Refresh the Book's summary and its computed
+   Concepts, Themes, and Source Notes views from canonical relationships.
+5. Create a **Source Note per anchored highlight** in `wiki/source-notes/`
    (lowercase-kebab-case filename). Identify it by its exact `^ref-*` value,
-   embed it with `![[<exact-raw-file-stem>#^ref-id]]`, add a one-line gloss,
-   and link it into the ontology. Before creating it, search for an existing
-   source note with the same raw filename stem and `ref`; update rather than
-   duplicate it.
-5. Create or update the **book editorial page** in `wiki/books/`: summary,
-   themes, concepts, and the index of this book's source notes.
-6. **Ripple outward — scan the wiki for impact.** For every concept, author,
-   person, entity, theme, or project this source touches:
+   embed it with `![[<exact-raw-file-stem>#^ref-id]]`, add a one-line gloss, and
+   populate its typed `book`, `concepts`, `people`, and `entities`
+   relationships. Before creating it, search for an existing Source Note with
+   the same `book-slug` and `ref`; update rather than duplicate it.
+6. **Ripple outward — scan the wiki for impact.** For every concept, person,
+   entity, or theme this source touches:
    - If a page exists: add the new source notes to its Source Support, refresh
      its content if the source changes the picture, and bump `updated`.
    - If no page exists and the idea warrants one: create it (or a clearly-marked
      stub), and log "page needed" if it needs fuller treatment later.
-7. Check whether any `syntheses/` should be updated in light of the new material.
+7. Refresh computed views on affected Book, Person, and Theme pages from the
+   canonical typed relationships. Never hand-maintain inverse frontmatter.
 8. Update `index.md` with new pages. In the Ingest record, store the exact raw
    filename stem, `kindle-lastAnnotatedDate`, and `kindle-highlightsCount`.
 9. Append an entry to `log.md`:
@@ -467,20 +477,21 @@ the job.
 **Steps:**
 
 1. Read `index.md`. Identify the relevant **theme cluster(s)** first — this is
-  the primary navigation layer. If a synthesis exists for the cluster, read it
-   before individual concept pages.
-2. Use the `related:` frontmatter on any page you read as a fast map to the next
-  most relevant pages — follow those before doing wider searches.
-3. Read only the pages the clusters and related-links point to. Don't read
-  irrelevant pages.
-4. Answer from the synthesized wiki. Do not re-read raw files unless you need to
+   the primary navigation layer. Follow `Theme.concepts` to the relevant Concept
+   pages, then follow inverse Source Note relationships to evidence and connected
+   Books, People, and Entities.
+2. Use typed relationship fields first. Use `related:` only as a secondary,
+   untyped navigation aid.
+3. Read only the pages reached through those relationships. Don't read
+   irrelevant pages.
+4. Answer from the wiki. Do not re-read raw files unless you need to
   verify a specific quote or claim.
 5. Cite the wiki pages you drew from (not just raw sources) so the answer stays
   traceable.
 6. If the answer is substantial and likely to be asked again, offer to save it as
-  a synthesis page in `wiki/syntheses/`.
+   an update to the relevant Concept or Theme page.
 7. If the query reveals a gap (a concept mentioned with no page, a theme not yet
-  framed), log it in `log.md` as "gap identified".
+   framed), report it and offer to log it as "gap identified".
 
 
 
@@ -491,26 +502,35 @@ seriously as ingest.
 
 **Check for all of the following:**
 
-1. **Duplicate pages** — two pages covering the same concept, author, entity, or
-  source. Flag and propose a merge direction.
-2. **Stale pages** — pages not updated despite new ingests that should have
-  touched them.
-3. **Contradictions** — claims on one page that contradict another. Flag and note
-  which sources support each side.
-4. **Broken embeds** — `![[<exact-raw-file-stem>#^ref-id]]` targets whose raw
+1. **Schema violations** — a page whose folder and `type` disagree, a required
+   field that is missing, or a page using the retired `author` or `synthesis`
+   type.
+2. **Invalid typed relationships** — relationship targets that are missing or
+   have a disallowed type. Validate every field against the ontology contract.
+3. **Cardinality violations** — a Book without at least one `authors` link, a
+   Source Note without exactly one `book`, or a Theme without at least one
+   `concepts` link.
+4. **Duplicate pages** — two pages covering the same concept, person, entity, or
+   source. Flag and propose a merge direction.
+5. **Stale or inconsistent computed views** — body sections that disagree with
+   canonical relationships, or pages not updated despite relevant new ingests.
+6. **Contradictions** — claims on one page that contradict another. Flag and note
+   which sources support each side.
+7. **Broken embeds** — `![[<exact-raw-file-stem>#^ref-id]]` targets whose raw
    file or `^ref-*` block no longer exists in `raw/books/`. Report each.
-5. **Missing pages** — wikilink targets (`[[filename-stem|Page Title]]`) with no
-corresponding file. List them.
-6. **Orphan pages** — pages with no inbound links from any other wiki page.
-7. **Overgrown pages** — pages too large to serve their purpose; propose a split.
-8. **Weak/generic pages** — thin content, vague definitions, no source support.
-9. **Thin source support** — a concept or theme resting on a single source.
-10. **Index drift** — `index.md` entries whose page is missing, or pages absent
-  from the index.
+8. **Missing pages** — untyped or navigation wikilink targets
+   (`[[filename-stem|Display Label]]`) with no corresponding file. List them.
+9. **Orphan pages** — pages with no inbound links from any other wiki page.
+10. **Overgrown pages** — pages too large to serve their purpose; propose a
+   split.
+11. **Weak/generic pages** — thin content, vague definitions, no source support.
+12. **Thin source support** — a concept or theme resting on a single source.
+13. **Index drift** — `index.md` entries whose page is missing, or pages absent
+   from the index.
 
-After linting, produce a prioritized list of issues. **Fix index drift directly**
-(it is mechanical). For everything else — especially merges — present findings
-and let Mariana decide. Do not auto-merge or auto-delete.
+After linting, produce a prioritized list of issues and proposed fixes. Follow
+the approval gate before changing anything, including index drift. Do not
+auto-merge or auto-delete.
 
 ---
 

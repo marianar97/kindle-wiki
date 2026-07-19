@@ -18,6 +18,5 @@ vault/wiki/syntheses/*.md
 vault/wiki/projects/*
 !vault/wiki/projects/.gitkeep
 
-extension/node_modules/
 tools/backup-private.sh
 CONTEXT.md

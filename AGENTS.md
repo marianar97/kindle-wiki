@@ -81,13 +81,21 @@ the existing page; never create a separate page for an alias.
 - Prefer an existing page over creating a near-synonym. Read `index.md` and
 existing aliases before naming anything new.
 - Every wiki page carries `created` and `updated` dates and a `related:` list
-of up to five genuinely close content pages by filename stem. Prefer fewer
-meaningful links over padding. Never include `index`, `log`, or an unrelated
-page merely to meet a count. Keep `updated` honest.
-- `tags` is a controlled optional field. Folder membership and `type` define
-page taxonomy, so do not duplicate them with tags such as `#author`, `#person`,
-`#book`, or `#source-note`. Use `tags: []` unless a tag adds information not
-already represented by the page type or its graph links.
+of up to five genuinely close content-page wikilinks. Store each entry as a
+quoted YAML string using the canonical filename stem and display title, for
+example `- "[[ai-alignment|AI Alignment]]"`, so it remains clickable in
+Obsidian's Properties view. Prefer fewer meaningful links over padding. Never
+include `index`, `log`, or an unrelated page merely to meet a count. Keep
+`updated` honest.
+- `tags` is an open-ended optional facet system for useful roles, disciplines,
+industries, methods, provenance, and other cross-cutting categories that do not
+necessarily warrant canonical pages. Before creating a tag, search both current
+`tags:` values across `wiki/` and the tag history in `log.md`. Reuse the existing
+canonical spelling when a tag or synonym already covers the meaning; normalize
+variants rather than creating parallel tags. Use lowercase kebab-case values
+without a leading `#`, generally 1–5 per tagged page. Do not duplicate page type,
+book genres, or relationships already represented adequately by graph links.
+Log every genuinely new tag and any synonym-normalization decision.
 - Every wikilink must target the exact lowercase filename stem, with the page
 title supplied as its display label: `[[filename-stem|Page Title]]`. Obsidian
 resolves filenames, not the `title` frontmatter property. Raw highlight embeds
@@ -129,7 +137,7 @@ ref: ^<block-id>                 # e.g. ^ref-43252
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
 tags: []
-related: []                      # up to 5 genuinely close content page stems
+related: []                      # up to 5 quoted, clickable content-page wikilinks
 ---
 
 ![[<exact-raw-file-stem>#^<block-id>]]
@@ -188,6 +196,11 @@ Full generated highlights: `raw/books/<exact-raw-file-stem>.md`
 
 ### Concept — `wiki/concepts/<concept-slug>.md`
 
+The **Key Thinkers** section must state each person's specific claim,
+interpretation, or use of the concept in the ingested sources. Never use generic
+descriptions such as "develops or frames this concept." Omit a person when the
+available source support does not establish a substantive position.
+
 ```markdown
 ---
 title: ""
@@ -206,7 +219,7 @@ related: []
 [Clear, precise definition. If contested or multiply-defined, say so explicitly.]
 
 ## Key Thinkers
-- [[author-slug|Author Name]] — [their version/use of this concept]
+- [[thinker-slug|Thinker Name]] — [their specific claim, interpretation, or use]
 
 ## Related Concepts
 - [[concept-slug|Concept Name]] — [how it relates]

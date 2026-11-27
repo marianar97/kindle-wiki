@@ -34,7 +34,7 @@ archive. Hold both. The wiki should be healthier after every session than before
 
 ## Architecture: three layers
 
-**Layer 1 —** `vault/raw/` — Immutable source material. You NEVER modify or delete
+**Layer 1 —** `raw/` — Immutable source material. You NEVER modify or delete
 anything here. It is ground truth.
 
 - `raw/books/<plugin-generated-filename>.md` — Per-book annotation files
@@ -49,7 +49,7 @@ entries are separated by `---`. Each citable highlight ends with a Kindle
 location link and a stable block ID such as `^ref-43252`. These IDs are the
 citation anchors: embed the original block; never retype its text.
 
-**Layer 2 —** `vault/wiki/` — LLM-written markdown. This is the knowledge base you
+**Layer 2 —** `wiki/` — LLM-written markdown. This is the knowledge base you
 edit. Pages are interlinked and kept current as sources are ingested. It is the
 primary source for answering queries.
 
@@ -104,7 +104,7 @@ labels. Raw highlight embeds remain
 `![[<exact-raw-file-stem>#^<block-id>]]`.
 - No emojis anywhere.
 
-## Folder conventions (`vault/wiki/`)
+## Folder conventions (`wiki/`)
 
 The wiki is organized as a lightweight ontology. Its folders define the primary
 taxonomy of page types. Each page is a node in the knowledge graph, while typed

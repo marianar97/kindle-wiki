@@ -1,23 +1,23 @@
 .superpowers/
-vault/.obsidian/
+/.obsidian/
 docs/superpowers
 
 # Personal knowledge base: keep the folder skeleton (.gitkeep) and code,
 # but never publish raw highlights or LLM-written wiki content.
-vault/raw/clippings/
-vault/raw/books/*.md
-vault/wiki/index.md
-vault/wiki/log.md
-vault/wiki/authors/*.md
-vault/wiki/books/*.md
-vault/wiki/concepts/*.md
-vault/wiki/entities/*.md
-vault/wiki/people/*.md
-vault/wiki/themes/*.md
-vault/wiki/source-notes/*.md
-vault/wiki/syntheses/*.md
-vault/wiki/projects/*
-!vault/wiki/projects/.gitkeep
+/raw/clippings/
+/raw/books/*.md
+/wiki/index.md
+/wiki/log.md
+/wiki/authors/*.md
+/wiki/books/*.md
+/wiki/concepts/*.md
+/wiki/entities/*.md
+/wiki/people/*.md
+/wiki/themes/*.md
+/wiki/source-notes/*.md
+/wiki/syntheses/*.md
+/wiki/projects/*
+!/wiki/projects/.gitkeep
 
 tools/backup-private.sh
 CONTEXT.md
